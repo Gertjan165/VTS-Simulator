@@ -31,13 +31,16 @@ html<!DOCTYPE html>
         // 1. Initialiseer de kaart centraal op de haven van Rotterdam (Europoort)
         const map = L.map('map').setView([51.96, 4.05], 11);
 
-        // 2. Laad de OpenStreetMap achtergrond
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // 2. Laad de OpenStreetMap achtergrond (Beveiligde en stabiele link)
+        L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // 3. Voeg de Maritieme OpenSeaMap laag toe voor boeien, lichten en vaargeulen
+        // 3. Voeg de Maritieme OpenSeaMap laag toe (Als deze offline is, blokkeert hij de rest niet)
         L.tileLayer('https://openseamap.org{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            opacity: 0.7,
             attribution: '© OpenSeaMap'
         }).addTo(map);
 
