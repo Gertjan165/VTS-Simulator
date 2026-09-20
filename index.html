@@ -2,173 +2,324 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>VTS Tracker - Electronic Chart Scheveningen</title>
-    <style>
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #020612; font-family: 'Courier New', monospace; color: #fff; }
-        #container { display: flex; width: 100vw; height: 100vh; }
-        
-        /* De Elektronische Zeekaart (ECDIS / Radar) */
-        #chart-area { 
-            flex: 1; 
-            background: #051329; /* Diepblauw maritiem water */
-            position: relative; 
-            border: 2px solid #00ffcc; 
-            margin: 15px; 
-            border-radius: 6px;
-            box-shadow: inset 0 0 40px rgba(0,255,204,0.2);
-            overflow: hidden;
-        }
-
-        /* --- MECHANISCHE RADAR/ZEEKAART GEOGRAFIE (SCHEVENINGEN AANLOOP) --- */
-        /* Kustlijn en strand */
-        .coastline { position: absolute; right: 0; top: 0; bottom: 0; width: 22%; background: rgba(212, 175, 55, 0.08); border-left: 2px solid #d4af37; z-index: 1; }
-        /* Ondiep water (10-meter lijn) */
-        .shallow-water { position: absolute; right: 22%; top: 0; bottom: 0; width: 15%; background: rgba(0, 204, 255, 0.04); border-left: 1px dashed #00ccff; z-index: 1; }
-        /* De Aanloopgeul (Approach Channel) */
-        .channel { position: absolute; left: 0; top: 46%; width: 78%; height: 8%; background: rgba(0, 255, 204, 0.03); border-top: 1px dashed rgba(0, 255, 204, 0.3); border-bottom: 1px dashed rgba(0, 255, 204, 0.3); z-index: 1; }
-        .channel-text { position: absolute; left: 5%; top: 48%; font-size: 11px; color: #00ffcc; opacity: 0.6; }
-        /* Ankergebied (Anchorage Area) */
-        .anchorage { position: absolute; left: 10%; top: 10%; width: 25%; height: 25%; border: 2px dotted #ffcc00; background: rgba(255,204,0,0.02); z-index: 1; }
-        .anchorage-text { position: absolute; left: 12%; top: 12%; font-size: 10px; color: #ffcc00; opacity: 0.7; }
-
-        /* Havenhoofden (Pieren) */
-        .harbor-entrance { position: absolute; left: 78%; top: 50%; width: 10px; height: 10px; transform: translate(-50%, -50%); z-index: 5; }
-        .pier-north { position: absolute; right: 5px; bottom: 20px; width: 90px; height: 6px; background: #3a4b5c; border: 1px solid #d4af37; transform: rotate(-25deg); transform-origin: right bottom; }
-        .pier-south { position: absolute; right: 5px; top: 20px; width: 85px; height: 6px; background: #3a4b5c; border: 1px solid #d4af37; transform: rotate(25deg); transform-origin: right top; }
-        
-        /* Havenlichten */
-        .light-green { position: absolute; left: 77.2%; top: 46.5%; width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 15px #00ff00; z-index: 6; }
-        .light-red { position: absolute; left: 77.2%; top: 52.5%; width: 8px; height: 8px; background: #ff3333; border-radius: 50%; box-shadow: 0 0 15px #ff3333; z-index: 6; }
-
-        /* --- TARGETS EN VECTOR LYNE --- */
-        .vessel {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            background: #00ffcc;
-            border: 2px solid #fff;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 12px #00ffcc;
-            z-index: 10;
-            transform: translate(-50%, -50%);
-        }
-        /* Snelheidsvector (Richting/Snelheid indicator) */
-        .vector-line {
-            position: absolute;
-            height: 2px;
-            background: #00ffcc;
-            transform-origin: left center;
-            z-index: 9;
-            pointer-events: none;
-        }
-        /* Routelijn op de kaart */
-        .route-line {
-            position: absolute;
-            height: 2px;
-            background: rgba(255, 204, 0, 0.5);
-            border-top: 2px dotted #ffcc00;
-            transform-origin: left center;
-            z-index: 4;
-            pointer-events: none;
-        }
-
-        .vessel-label { position: absolute; font-size: 11px; color: #00ffcc; background: rgba(2, 6, 18, 0.85); padding: 1px 5px; border: 1px solid rgba(0,255,204,0.3); border-radius: 3px; pointer-events: none; white-space: nowrap; z-index: 11; transform: translate(12px, -7px); }
-        
-        /* Rechter VTS Bedieningspaneel */
-        #vts-panel { width: 360px; background: rgba(6, 18, 36, 0.98); padding: 20px; border-left: 2px solid #00ffcc; box-shadow: -5px 0 15px rgba(0, 255, 204, 0.2); box-sizing: border-box; display: flex; flex-direction: column; }
-        h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 15px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffcc; text-transform: uppercase; }
-        .ship-entry { padding: 6px 0; border-bottom: 1px dashed rgba(0,255,204,0.15); font-size: 12px; }
-        .highlight { color: #ffcc00; font-weight: bold; }
-        
-        /* Sliders en Besturing */
-        .control-group { margin-top: 12px; background: rgba(0, 255, 204, 0.04); padding: 12px; border-radius: 4px; border: 1px solid rgba(0, 255, 204, 0.2); }
-        .control-label { font-size: 11px; color: #8ab4f8; display: block; margin-bottom: 5px; text-transform: uppercase; }
-        .slider { width: 100%; accent-color: #00ffcc; margin-top: 5px; }
-        .btn { background: #00ffcc; color: #020612; border: none; padding: 8px 12px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 11px; width: 100%; margin-top: 8px; }
-        .btn:hover { background: #ffcc00; }
-        .route-mode-active { border: 2px dashed #ffcc00 !important; background: rgba(255, 204, 0, 0.1) !important; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTS Radar Simulator - Scheveningen Sector</title>
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <link rel="stylesheet" href="https://cloudflare.com" />
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <div id="container">
-        <!-- Links: De elektronische zeekaart -->
-        <div id="chart-area" onclick="handleChartClick(event)">
-            <div class="coastline"></div>
-            <div class="shallow-water"></div>
-            <div class="channel"></div>
-            <div class="channel-text">SCHEVENINGEN APPROACH CHANNEL (112° / 292°)</div>
-            <div class="anchorage"></div>
-            <div class="anchorage-text">ANCHORAGE AREA 4E</div>
-
-            <!-- Geometrie van de havenhoofden -->
-            <div class="harbor-entrance">
-                <div class="pier-north"></div>
-                <div class="pier-south"></div>
-            </div>
-            <div class="light-green"></div>
-            <div class="light-red"></div>
-
-            <!-- Dynamische scheepstargets en hun labels -->
-            <div id="ship1" class="vessel" onclick="selectShip(event, 1)"></div>
-            <div id="label1" class="vessel-label">SCH-24</div>
-            <div id="vector1" class="vector-line"></div>
-
-            <div id="ship2" class="vessel" onclick="selectShip(event, 2)"></div>
-            <div id="label2" class="vessel-label">OCEAN CARRIER</div>
-            <div id="vector2" class="vector-line"></div>
-
-            <div id="ship3" class="vessel" onclick="selectShip(event, 3)"></div>
-            <div id="label3" class="vessel-label">PILOT ALTAIR</div>
-            <div id="vector3" class="vector-line"></div>
-
-            <!-- Container voor dynamische routelijnen -->
-            <div id="routes-container"></div>
+    <div class="vts-container">
+        <!-- Radarscherm -->
+        <div id="radar-screen">
+            <div id="radar-overlay-info">Sector: Scheveningen Traffic | Ch 21</div>
         </div>
 
-        <!-- Rechts: Het VTS Panel -->
-        <div id="vts-panel">
-            <h2>VTS SCHEVENINGEN RADAR</h2>
-            <p style="font-size:11px; margin:0 0 10px 0; color: #8ab4f8;">TRAFFIC SERVICE CENTER | MONITORING MODE</p>
-            <hr style="border-color: rgba(0,255,204,0.3); margin: 5px 0 12px 0;">
-            
-            <div id="ship-info"><i>Klik op een bewegend schip op de kaart voor AIS-data en route-instellingen.</i></div>
-            
-            <!-- Besturingspaneel voor Snelheid en Route -->
-            <div id="controls-panel" style="display: none;">
-                <div class="control-group">
-                    <span class="control-label">Snelheid aanpassen (<span id="speedVal" class="highlight">10</span> kts):</span>
-                    <input type="range" id="speedSlider" class="slider" min="0" max="25" step="0.5" oninput="changeSpeed(this.value)">
-                </div>
-                <div class="control-group" id="route-box">
-                    <span class="control-label">Handmatige Koers / Route:</span>
-                    <button class="btn" id="routeBtn" onclick="toggleRouteMode()">📍 DIGITALE ROUTE UITZETTEN</button>
-                    <p style="font-size:10px; color:#ffcc00; margin: 8px 0 0 0; line-height:1.3;">Klik op deze knop, klik daarna achter elkaar op de zeekaart om waypoints te plaatsen waar het schip heen moet varen.</p>
-                </div>
+        <!-- VTS Controlepaneel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-circle-radiation"></i> SCHEVENINGEN TRAFFIC</h2>
+                <div id="vts-clock">00:00:00 UTC</div>
             </div>
-            
-            <div style="margin-top: auto; border-top: 1px solid rgba(0,255,204,0.2); padding-top: 15px;">
-                <h2>CPA SAFETY WARNING</h2>
-                <div id="alarm-box" style="color: #00ff00; font-size: 12px; font-weight: bold; margin-top: 5px;">STATUS: NO CLOSE APPROACH DETECTED</div>
+
+            <!-- Operator Tools -->
+            <div class="tools-box">
+                <h3><i class="fa-solid fa-toolbox"></i> Radar Tools</h3>
+                <button id="tool-ebl-vrm" class="btn-tool"><i class="fa-solid fa-ruler-combined"></i> EBL / VRM (Meet Peiling/Afstand)</button>
+                <div id="measurement-output">Klik op de tool en daarna op de kaart...</div>
+            </div>
+
+            <!-- Schip Inzetten (Scenario Control) -->
+            <div class="spawn-box">
+                <h3><i class="fa-solid fa-plus"></i> Schip Inzetten</h3>
+                <select id="spawn-route">
+                    <option value="inbound">Invarend (Naar Binnenhaven)</option>
+                    <option value="outbound">Uitvarend (Naar Zee)</option>
+                    <option value="anchoring">Naar Ankergebied</option>
+                </select>
+                <button id="spawn-btn"><i class="fa-solid fa-ship"></i> Activeer Schip</button>
+            </div>
+
+            <!-- Geselecteerd Schip & CPA -->
+            <div class="ship-info-box">
+                <h3><i class="fa-solid fa-circle-info"></i> Target Data & CPA</h3>
+                <div id="target-data">
+                    <p class="placeholder-text">Selecteer een target op het radarscherm...</p>
+                </div>
+                <div id="cpa-warning-box"></div>
+            </div>
+
+            <!-- VHF Communicatie -->
+            <div class="vhf-box">
+                <h3><i class="fa-solid fa-walkie-talkie"></i> VHF Ch 21</h3>
+                <div id="vhf-log"></div>
+                <div class="vhf-input-container">
+                    <input type="text" id="vhf-input" placeholder="Commando: 'koers X' of 'snelheid Y'...">
+                    <button id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        // De 3 schepen met hun exacte maritieme startlocaties
-        let ships = {
-            1: { id: 1, name: "SCH-24 SCHEVENINGEN", x: 60, y: 95, speedKts: 9, headingDeg: 345, mmsi: "244670000", type: "Grote Trawler (Kotter)", route: [], targetWp: 0 },
-            2: { name: "OCEAN CARRIER", x: 5, y: 50, speedKts: 12, headingDeg: 90, mmsi: "244987654", type: "Container Feeder", route: [], targetWp: 0 },
-            3: { name: "PILOT LAUNCH ALTAIR", x: 45, y: 30, speedKts: 0, headingDeg: 180, mmsi: "244123999", type: "Loodsboot (Stand-by)", route: [], targetWp: 0 }
-        };
+    <script src="https://unpkg.com"></script>
+    <script src="app.js"></script>
+</body>
+    css* { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; }
+body, html { height: 100%; background-color: #05080c; color: #00ff66; overflow: hidden; }
+.vts-container { display: flex; width: 100vw; height: 100vh; }
 
-        let currentSelected = null;
-        let routePlanningMode = false;
+#radar-screen { flex: 3; height: 100%; background-color: #030508; position: relative; }
+#radar-overlay-info { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(3,5,8,0.8); padding: 5px 10px; border: 1px solid #00ff66; font-weight: bold; }
 
-        // Selecteer een schip
-        window.selectShip = function(event, id) {
-            event.stopPropagation(); // Voorkom dat de kaartklik afgaat
-            currentSelected = id;
-            let ship = ships[id];
-            
+/* Radar inversion effect */
+.leaflet-layer { filter: invert(100%) hue-rotate(100deg) brightness(40%) contrast(120%); }
+
+.control-panel { flex: 1; background-color: #0a0f14; border-left: 2px solid #00ff66; display: flex; flex-direction: column; padding: 12px; gap: 10px; overflow-y: auto; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #00ff66; padding-bottom: 5px; }
+h2 { font-size: 1.1rem; color: #00ff66; }
+h3 { font-size: 0.85rem; color: #00ff66; margin-bottom: 5px; text-transform: uppercase; border-bottom: 1px dotted #003311; }
+
+.tools-box, .spawn-box, .ship-info-box, .vhf-box { background: #030508; border: 1px solid #004411; padding: 10px; border-radius: 4px; }
+button { background: #002208; border: 1px solid #00ff66; color: #00ff66; padding: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+button:hover { background: #00ff66; color: #030508; }
+
+#measurement-output { font-size: 0.8rem; color: #00ffbb; margin-top: 5px; }
+select { width: 100%; background: #030508; border: 1px solid #00ff66; color: #00ff66; padding: 5px; margin-bottom: 5px; }
+
+.ship-label { background: transparent; border: none; color: #00ff66; font-weight: bold; font-size: 11px; text-shadow: 1px 1px 2px #000; }
+.placeholder-text { color: #004411; italic; }
+
+#vhf-log { height: 120px; overflow-y: auto; background: #020305; border: 1px solid #002208; padding: 5px; font-size: 0.8rem; margin-bottom: 5px; }
+.vhf-input-container { display: flex; gap: 5px; }
+#vhf-input { flex: 1; background: #030508; border: 1px solid #00ff66; color: #00ff66; padding: 6px; }
+
+#cpa-warning-box { margin-top: 8px; color: #ff3333; font-weight: bold; font-size: 0.85rem; }
+.danger-flash { animation: flash 1s infinite; color: #ff3333 !important; }
+@keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</html>javascript// 1. Kaart initialisatie gefocust op Scheveningen
+const map = L.map('radar-screen').setView([52.115, 4.240], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+// 2. Geografische VTS Markeringen (Havenhoofden & Ankergebied)
+const havenHoofden = [
+    [52.1023, 4.2612], // Noordelijk Havenhoofd
+    [52.0998, 4.2635]  // Zuidelijk Havenhoofd
+];
+L.polyline(havenHoofden, {color: '#00ff66', weight: 4, dashArray: '5, 5'}).addTo(map)
+ .bindTooltip("Havenmond Scheveningen", {permanent: false});
+
+// Ankergebied 4 (vóór de kust van Scheveningen)
+const ankerGebied4 = [
+    [52.140, 4.160], [52.160, 4.190],
+    [52.145, 4.220], [52.125, 4.190]
+];
+L.polygon(ankerGebied4, {color: '#00ffff', weight: 1, fillColor: '#00ffff', fillOpacity: 0.05}).addTo(map)
+ .bindTooltip("Ankergebied 4", {permanent: true, className: 'ship-label', direction: 'center'});
+
+// 3. Schepen Database (Max 10 actieve schepen in de sector)
+let ships = [
+    { id: 1, name: "SCH-118", lat: 52.105, lon: 4.255, heading: 240, speed: 6.0, type: "Trawler", vectorLine: null, textLabel: null, marker: null },
+    { id: 2, name: "PACIFIC ROCK", lat: 52.135, lon: 4.185, heading: 135, speed: 0.0, type: "Bulk Carrier", vectorLine: null, textLabel: null, marker: null }
+];
+let selectedShipId = null;
+let namesPool = ["STORK", "ALBATROS", "EEMS TRADER", "ROTTERDAM S.", "MAASSTROOM", "ZEEAREND", "MIRFAK", "TRITON"];
+
+// 4. Teken schepen en hun VTS Vectoren (S-52 Standaard)
+function renderShips() {
+    ships.forEach(ship => {
+        if (ship.marker) map.removeLayer(ship.marker);
+        if (ship.vectorLine) map.removeLayer(ship.vectorLine);
+        if (ship.textLabel) map.removeLayer(ship.textLabel);
+
+        // Bereken het eindpunt van de 6-minuten vector (voorspelde positie)
+        const vectorMinutes = 6; 
+        const speedInDeg = (ship.speed * 0.000514) / 111320;
+        const rad = (ship.heading * Math.PI) / 180;
+        const endLat = ship.lat + Math.sin(rad) * speedInDeg * (vectorMinutes * 60) * 10; // Versnelde factor
+        const endLon = ship.lon + Math.cos(rad) * speedInDeg * (vectorMinutes * 60) * 10;
+
+        // Teken Koersvector
+        ship.vectorLine = L.polyline([[ship.lat, ship.lon], [endLat, endLon]], {color: '#00ff66', weight: 1.5}).addTo(map);
+
+        // Teken Schip Target (Blip)
+        ship.marker = L.circleMarker([ship.lat, ship.lon], {
+            radius: 5, color: '#00ff66', fillColor: '#030508', fillOpacity: 1, weight: 2
+        }).addTo(map);
+
+        // Voeg VTS Label toe (Naam + Heading)
+        ship.textLabel = L.marker([ship.lat + 0.002, ship.lon + 0.002], {
+            icon: L.divIcon({
+                className: 'ship-label',
+                html: `${ship.name}<br>${String(Math.round(ship.heading)).padStart(3,'0')}° / ${ship.speed.toFixed(1)}kt`
+            })
+        }).addTo(map);
+
+        ship.marker.on('click', () => selectShip(ship.id));
+    });
+}
+
+function selectShip(id) {
+    selectedShipId = id;
+    const ship = ships.find(s => s.id === id);
+    document.getElementById('target-data').innerHTML = `
+        <strong>NAME:</strong> ${ship.name}<br>
+        <strong>TYPE:</strong> ${ship.type}<br>
+        <strong>COG:</strong> ${Math.round(ship.heading)}°<br>
+        <strong>SOG:</strong> ${ship.speed.toFixed(1)} KT<br>
+        <strong>POS:</strong> ${ship.lat.toFixed(4)}N / ${ship.lon.toFixed(4)}E
+    `;
+    calculateCPA(ship);
+}
+
+// 5. CPA (Closest Point of Approach) Berekening
+function calculateCPA(selectedShip) {
+    let warningBox = document.getElementById('cpa-warning-box');
+    warningBox.innerHTML = "";
+    
+    ships.forEach(other => {
+        if (other.id === selectedShip.id) return;
+        
+        // Simpele afstandsberekening tussen twee schepen
+        const latDiff = selectedShip.lat - other.lat;
+        const lonDiff = selectedShip.lon - other.lon;
+        const distanceNM = Math.sqrt(latDiff*latDiff + lonDiff*lonDiff) * 60; // Ruwe Zeemijlen
+
+        if (distanceNM < 0.5 && selectedShip.speed > 0 && other.speed > 0) {
+            warningBox.innerHTML += `<div class="danger-flash"><i class="fa-solid fa-triangle-exclamation"></i> CPA RISK: ${other.name} (${(distanceNM * 10).toFixed(1)} Kabels)</div>`;
+        }
+    });
+}
+
+// 6. EBL / VRM Tool (Peiling & Afstand Meten)
+let eblMode = false;
+let startPoint = null;
+let measurementLine = null;
+
+document.getElementById('tool-ebl-vrm').addEventListener('click', () => {
+    eblMode = !eblMode;
+    startPoint = null;
+    if(measurementLine) map.removeLayer(measurementLine);
+    document.getElementById('measurement-output').innerText = eblMode ? "Klik NU op de kaart voor het startpunt (bijv. de Radartoren of een Schip)..." : "Tool uitgeschakeld.";
+});
+
+map.on('click', (e) => {
+    if (!eblMode) return;
+
+    if (!startPoint) {
+        startPoint = e.latlng;
+        document.getElementById('measurement-output').innerText = "Startpunt vastgezet. Klik nu op het einddoel...";
+    } else {
+        const endPoint = e.latlng;
+        if(measurementLine) map.removeLayer(measurementLine);
+        
+        measurementLine = L.polyline([startPoint, endPoint], {color: '#00ffff', weight: 1, dashArray: '4, 4'}).addTo(map);
+
+        // Berekeningen
+        const lat1 = startPoint.lat * Math.PI / 180;
+        const lat2 = endPoint.lat * Math.PI / 180;
+        const dLon = (endPoint.lng - startPoint.lng) * Math.PI / 180;
+
+        // Peiling (True Bearing)
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        let bearing = Math.atan2(y, x) * 180 / Math.PI;
+        bearing = (bearing + 360) % 360;
+
+        // Afstand
+        const meters = startPoint.distanceTo(endPoint);
+        const nm = meters / 1852;
+        const kabels = nm * 10;
+
+        document.getElementById('measurement-output').innerHTML = `
+            <strong>PEILING (EBL):</strong> ${bearing.toFixed(1)}° True<br>
+            <strong>AFSTAND (VRM):</strong><br>
+            - ${meters.toFixed(0)} meter<br>
+            - ${nm.toFixed(2)} NM (Zeemijlen)<br>
+            - ${kabels.toFixed(1)} Kabels
+        `;
+        eblMode = false; // Reset na meting
+    }
+});
+
+// 7. Nieuw Schip Inzetten (Vaste Routes)
+document.getElementById('spawn-btn').addEventListener('click', () => {
+    if (ships.length >= 10) {
+        alert("Maximum aantal van 10 schepen in de sector bereikt!");
+        return;
+    }
+
+    const routeType = document.getElementById('spawn-route').value;
+    const randomName = namesPool[Math.floor(Math.random() * namesPool.length)] + " " + Math.floor(Math.random()*90+10);
+    
+    let newShip = { id: Date.now(), name: randomName, type: "Commercial Vessel" };
+
+    if (routeType === "inbound") {
+        newShip.lat = 52.145; newShip.lon = 4.170; newShip.heading = 125; newShip.speed = 12.0; // Richting havenhoofden
+    } else if (routeType === "outbound") {
+        newShip.lat = 52.100; newShip.lon = 4.260; newShip.heading = 305; newShip.speed = 8.5;  // Verlaat binnenhaven naar zee
+    } else {
+        newShip.lat = 52.120; newShip.lon = 4.210; newShip.heading = 340; newShip.speed = 5.0;  // Stoomt richting ankergebied
+    }
+
+    ships.push(newShip);
+    renderShips();
+    logMessage("SYSTEM", `Target gedetecteerd: ${randomName} op route.`, "system-msg");
+});
+
+// 8. VHF Commando's (Snelheid & Koers Wijzigen via marifoon)
+document.getElementById('send-btn').addEventListener('click', handleVTSCommand);
+function handleVTSCommand() {
+    const input = document.getElementById('vhf-input');
+    const text = input.value.trim().toLowerCase();
+    if(!text || !selectedShipId) return;
+
+    const ship = ships.find(s => s.id === selectedShipId);
+    logMessage("VTS SCHEVENINGEN", `${ship.name}, ${input.value}`, "vts-msg");
+    input.value = "";
+
+    setTimeout(() => {
+        if (text.includes("koers")) {
+            const num = text.match(/\d+/);
+            if (num) { ship.heading = parseInt(num[0]) % 360; logMessage(ship.name, `Roger, sturen koers ${ship.heading}°`, "ship-msg"); }
+        } else if (text.includes("snelheid")) {
+            const num = text.match(/\d+/);
+            if (num) { ship.speed = parseFloat(num[0]); logMessage(ship.name, `Roger, passen snelheid aan naar ${ship.speed} knopen.`, "ship-msg"); }
+        }
+    }, 1000);
+}
+
+function logMessage(sender, text, type) {
+    const log = document.getElementById('vhf-log');
+    log.innerHTML += `<p><strong>${sender}:</strong> ${text}</p>`;
+    log.scrollTop = log.scrollHeight;
+}
+
+// 9. Simulatieloop (Posities updaten elke 2 seconden)
+setInterval(() => {
+    ships.forEach(ship => {
+        if (ship.speed === 0) return;
+        const speedInDeg = (ship.speed * 0.000514) / 111320;
+        const rad = (ship.heading * Math.PI) / 180;
+        
+        // Beweeg schip
+        ship.lat += Math.sin(rad) * speedInDeg * 10;
+        ship.lon += Math.cos(rad) * speedInDeg * 10;
+        
+        // Automatische route-aanpassing voor invarende schepen nabij de havenmonding
+        if (ship.lat < 52.103 && ship.lon > 4.258 && ship.heading === 125) {
+            ship.heading = 150; // Draai de havenas op
+            ship.speed = 4.0;   // Snelheid minderen binnen de havenhoofden
+        }
+    });
+
+    renderShips();
+    if(selectedShipId) {
+        const sel = ships.find(s => s.id === selectedShipId);
+        if(sel) selectShip(sel.id);
+    }
+    const now = new Date();
+    document.getElementById('vts-clock').innerText = now.toUTCString().substring(17, 25) + " UTC";
+}, 2000);
+
+// Start setup
+renderShips();
