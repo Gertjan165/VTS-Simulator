@@ -2,51 +2,82 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Pure HTML5 VTS Radar Simulator</title>
+    <title>VTS Radar Simulator - Fail-Safe Edition</title>
     <style>
-        /* Volledig scherm instellen en achtergrond pikzwart maken zoals een echte radar */
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #02060c; font-family: 'Courier New', monospace; }
-        
-        /* Flexbox om de radar links en het paneel rechts te zetten */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #02060c; font-family: 'Courier New', monospace; color: #fff; }
         #container { display: flex; width: 100vw; height: 100vh; }
-        #radar-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
         
-        /* Het VTS Controlepaneel aan de rechterkant */
+        /* Het Radarschermgebied */
+        #radar-area { 
+            flex: 1; 
+            background: #040d1a; 
+            position: relative; 
+            border: 2px solid #00ffcc; 
+            margin: 15px; 
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0,255,204,0.2);
+        }
+        
+        /* De Schepen (Targets) als felle, klikbare blokken */
+        .vessel {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #00ffcc;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00ffcc;
+            transition: top 0.1s linear, left 0.1s linear;
+        }
+        .vessel::after {
+            content: attr(data-name);
+            position: absolute;
+            top: 28px;
+            left: -20px;
+            font-size: 10px;
+            white-space: nowrap;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        /* Rechter VTS Controlepaneel */
         #vts-panel { 
-            width: 300px; 
+            width: 320px; 
             background: rgba(6, 18, 36, 0.95); 
             padding: 20px; 
             border-left: 2px solid #00ffcc; 
             box-shadow: -5px 0 15px rgba(0, 255, 204, 0.2);
-            color: #fff;
             box-sizing: border-box;
         }
-        
-        canvas { background: #040d1a; border: 2px solid #00ffcc; border-radius: 50%; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); }
         h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffcc; }
         .ship-entry { padding: 8px 0; border-bottom: 1px dashed rgba(0,255,204,0.2); font-size: 12px; }
         .highlight { color: #ffcc00; font-weight: bold; }
-        .btn { background: #00ffcc; color: #02060c; border: none; padding: 6px 12px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; margin-top: 10px; width: 100%; }
+        .btn { background: #00ffcc; color: #02060c; border: none; padding: 10px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; margin-top: 15px; width: 100%; font-size: 13px; }
         .btn:hover { background: #ffcc00; }
     </style>
 </head>
 <body>
 
     <div id="container">
-        <!-- Links: Het radarscherm (getekend met HTML5 Canvas) -->
-        <div id="radar-container">
-            <canvas id="radarCanvas" width="600" height="600"></canvas>
+        <!-- Links: Het fysieke radarscherm waar de targets IN staan -->
+        <div id="radar-area" id="radarScreen">
+            <!-- Schip 1 -->
+            <div id="ship1" class="vessel" data-name="SCH-24" style="left: 20%; top: 30%;" onclick="selectShip(1)"></div>
+            <!-- Schip 2 -->
+            <div id="ship2" class="vessel" data-name="ALTAIR" style="left: 70%; top: 60%;" onclick="selectShip(2)"></div>
         </div>
 
-        <!-- Rechts: De VTS Target Info -->
+        <!-- Rechts: Het VTS Informatiepaneel -->
         <div id="vts-panel">
             <h2>VTS RADAR CONTROL</h2>
             <p style="font-size:11px; margin:0 0 10px 0; color: #8ab4f8;">SECTOR: SCHEVENINGEN APPROACH</p>
             <p style="font-size:12px; margin:0;">STATUS: <span style="color:#00ff00; font-weight:bold;">STANDALONE OK</span></p>
-            <p style="font-size:12px; margin:5px 0 0 0;">ACTIEVE TARGETS: <span class="highlight" id="target-count">2</span></p>
+            <p style="font-size:12px; margin:5px 0 0 0;">ACTIEVE TARGETS: <span class="highlight">2</span></p>
             <hr style="border-color: rgba(0,255,204,0.3); margin: 15px 0;">
             
-            <div id="ship-info"><i>Klik op een bewegende stip (target) op het radarscherm voor AIS-data.</i></div>
+            <div id="ship-info"><i>Klik op een bewegend target aan de linkerkant voor AIS-data.</i></div>
             
             <hr style="border-color: rgba(0,255,204,0.3); margin: 15px 0;">
             <h2>ALARM STATUS</h2>
@@ -55,161 +86,82 @@
     </div>
 
     <script>
-        const canvas = document.getElementById('radarCanvas');
-        const ctx = canvas.getContext('2d');
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radarRadius = canvas.width / 2 - 10;
+        // Posities en snelheden van de 2 targets
+        let ships = {
+            1: { name: "SCH-24 SCHEVENINGEN", x: 20, y: 30, dx: 0.1, dy: 0.05, mmsi: "244670000", type: "Visserstrawler", heading: 120 },
+            2: { name: "PILOT LAUNCH ALTAIR", x: 70, y: 60, dx: -0.08, dy: -0.06, mmsi: "244123999", type: "Loodsboot", heading: 310 }
+        };
 
-        // De 2 schepen (gecentreerd op het radarscherm)
-        let ships = [
-            { id: 1, name: "SCH-24 SCHEVENINGEN", x: -150, y: -100, speedX: 0.3, speedY: 0.2, course: 125, mmsi: "244670000", type: "Visserstrawler", selected: false },
-            { id: 2, name: "PILOT LAUNCH ALTAIR", x: 180, y: 120, speedX: -0.4, speedY: -0.3, course: 305, mmsi: "244123999", type: "Loodsboot", selected: false }
-        ];
+        let currentSelected = null;
 
-        let selectedShip = null;
-        let radarAngle = 0;
-
-        // Functie om de afstand tussen de 2 schepen te berekenen (CPA Check)
-        function checkCollision() {
-            let dx = ships[0].x - ships[1].x;
-            let dy = ships[0].y - ships[1].y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
+        // Selecteer een schip en toon direct de data rechts
+        window.selectShip = function(id) {
+            currentSelected = id;
+            let ship = ships[id];
             
+            // Reset alle kleuren en maak de geselecteerde geel
+            document.querySelectorAll('.vessel').forEach(v => v.style.background = '#00ffcc');
+            document.getElementById('ship' + id).style.background = '#ffcc00';
+
+            document.getElementById('ship-info').innerHTML = `
+                <div class="ship-entry"><b>TARGET:</b> <span class="highlight">${ship.name}</span></div>
+                <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
+                <div class="ship-entry"><b>TYPE:</b> ${ship.type}</div>
+                <div class="ship-entry"><b>HEADING:</b> ${ship.heading}°</div>
+                <div class="ship-entry"><b>SPEED:</b> 12.4 KNTS</div>
+                <button class="btn" onclick="alterCourse()">⚠️ WIJZIG KOERS (INGRIJPEN)</button>
+            `;
+        };
+
+        // De koerswijziging-knop (De operator grijpt in)
+        window.alterCourse = function() {
+            if (currentSelected) {
+                let ship = ships[currentSelected];
+                // Keer de richting om zodat ze direct wegdraaien en niet botsen
+                ship.dx = -ship.dx;
+                ship.dy = -ship.dy;
+                ship.heading = (ship.heading + 180) % 360;
+                
+                // Update het paneel
+                selectShip(currentSelected);
+            }
+        };
+
+        // De simulatie-engine (Beweegt de blokjes live over het scherm)
+        setInterval(() => {
+            for (let id in ships) {
+                let ship = ships[id];
+                
+                // Update posities
+                ship.x += ship.dx;
+                ship.y += ship.dy;
+
+                // Grenzen bewaken (binnen het scherm houden)
+                if (ship.x < 5 || ship.x > 90) ship.dx = -ship.dx;
+                if (ship.y < 5 || ship.y > 90) ship.dy = -ship.dy;
+
+                // Verplaats het HTML-element op het scherm
+                let el = document.getElementById('ship' + id);
+                if (el) {
+                    el.style.left = ship.x + '%';
+                    el.style.top = ship.y + '%';
+                }
+            }
+
+            // Bereken onderlinge afstand voor het CPA alarm
+            let dist = Math.sqrt((ships[1].x - ships[2].x)**2 + (ships[1].y - ships[2].y)**2);
             let alarmBox = document.getElementById('alarm-box');
-            if (distance < 40) {
+            
+            if (dist < 10) {
                 alarmBox.innerHTML = "⚠️ ALARM: CLOSE APPROACH! CRITICAL";
                 alarmBox.style.color = "#ff3333";
-                return true;
+                document.getElementById('ship1').style.background = '#ff3333';
+                document.getElementById('ship2').style.background = '#ff3333';
             } else {
                 alarmBox.innerHTML = "CPA STATUS: VEILIG";
                 alarmBox.style.color = "#00ff00";
-                return false;
             }
-        }
-
-        // Tekenlus (Draait 60 keer per seconde voor vloeiende animatie)
-        function drawRadar() {
-            // 1. Wis het scherm en teken de donkerblauwe radarachtergrond
-            ctx.fillStyle = '#040d1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Teken de radarringen (schaallijnen)
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.15)';
-            ctx.lineWidth = 1;
-            for (let r = 50; r <= radarRadius; r += 50) {
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-
-            // 3. Teken het vizier / kruisdraad
-            ctx.beginPath();
-            ctx.moveTo(centerX - radarRadius, centerY); ctx.lineTo(centerX + radarRadius, centerY);
-            ctx.moveTo(centerX, centerY - radarRadius); ctx.lineTo(centerX, centerY + radarRadius);
-            ctx.stroke();
-
-            // 4. Teken de roterende radarstraal (Sweep)
-            radarAngle += 0.01;
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.4)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + Math.cos(radarAngle) * radarRadius, centerY + Math.sin(radarAngle) * radarRadius);
-            ctx.stroke();
-
-            // Check of er een aanvaringsgevaar is
-            let isDangerous = checkCollision();
-
-            // 5. Teken de schepen (targets)
-            ships.forEach(ship => {
-                // Update posities
-                ship.x += ship.speedX;
-                ship.y += ship.speedY;
-
-                // Als ze buiten het radarscherm varen, kaats ze terug (om te blijven spelen)
-                if (Math.abs(ship.x) > 280) ship.speedX *= -1;
-                if (Math.abs(ship.y) > 280) ship.speedY *= -1;
-
-                // Bereken schermpositie vanaf het centrum
-                let screenX = centerX + ship.x;
-                let screenY = centerY + ship.y;
-
-                // Kleur bepalen: rood bij alarm, geel bij geselecteerd, groen is standaard
-                if (isDangerous) {
-                    ctx.fillStyle = '#ff3333';
-                } else if (ship.selected) {
-                    ctx.fillStyle = '#ffcc00';
-                } else {
-                    ctx.fillStyle = '#00ffcc';
-                }
-
-                // Teken het schip als een vierkantje/blip
-                ctx.fillRect(screenX - 4, screenY - 4, 8, 8);
-
-                // Teken de koersvector (richtingslijntje vooruit)
-                ctx.strokeStyle = ctx.fillStyle;
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(screenX, screenY);
-                ctx.lineTo(screenX + (ship.speedX * 25), screenY + (ship.speedY * 25));
-                ctx.stroke();
-
-                // Teken de naam van het schip klein erbij
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.font = '10px monospace';
-                ctx.fillText(ship.name, screenX + 10, screenY + 3);
-            });
-
-            requestAnimationFrame(drawRadar);
-        }
-
-        // Muisklik detectie om op schepen te kunnen klikken
-        canvas.addEventListener('click', function(event) {
-            let rect = canvas.getBoundingClientRect();
-            let mouseX = event.clientX - rect.left;
-            let mouseY = event.clientY - rect.top;
-
-            // Vertaal muispositie naar simulator coördinaten
-            let simX = mouseX - centerX;
-            let simY = mouseY - centerY;
-
-            selectedShip = null;
-
-            ships.forEach(ship => {
-                // Check of de klik dichtbij het schip was (binnen 12 pixels)
-                let distance = Math.sqrt((simX - ship.x)**2 + (simY - ship.y)**2);
-                if (distance < 12) {
-                    ship.selected = true;
-                    selectedShip = ship;
-                    
-                    // Toon data in het rechterpaneel
-                    document.getElementById('ship-info').innerHTML = `
-                        <div class="ship-entry"><b>TARGET:</b> <span class="highlight">${ship.name}</span></div>
-                        <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
-                        <div class="ship-entry"><b>TYPE:</b> ${ship.type}</div>
-                        <div class="ship-entry"><b>HEADING:</b> ${ship.course}°</div>
-                        <div class="ship-entry"><b>SPEED:</b> ${(Math.sqrt(ship.speedX**2 + ship.speedY**2) * 20).toFixed(1)} KNTS</div>
-                        <button class="btn" onclick="alterCourse()">WIJZIG KOERS</button>
-                    `;
-                } else {
-                    ship.selected = false;
-                }
-            });
-
-            if (!selectedShip) {
-                document.getElementById('ship-info').innerHTML = `<i>Klik op een bewegende stip (target) op het radarscherm voor AIS-data.</i>`;
-            }
-        });
-
-        // Functie voor de "WIJZIG KOERS" knop om interactief in te grijpen!
-        window.alterCourse = function() {
-            if (selectedShip) {
-                // Verander de richting van het schip willekeurig om de koers te corrigeren
-                selectedShip.speedX = (Math.random() - 0.5) * 1.2;
-                selectedShip.speedY = (Math.random() - 0.5) * 1.2;
-                selectedShip.course = Math.floor(Math.random() * 360);
-                
-                // Update direct het paneel
-                document.getElementById('ship-info').innerHTML = `
-                    <div class="ship-entry"><b>TARGET:</b> <span class="highlight">${selectedShip.name}</span></div>
+        }, 100);
+    </script>
+</body>
+</html>
