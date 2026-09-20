@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html<!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
@@ -9,12 +9,10 @@
         body, html { height: 100%; background-color: #010204; color: #00ff66; overflow: hidden; }
         .vts-container { display: flex; width: 100vw; height: 100vh; }
         
-        /* Radarscherm links */
         #radar-container { flex: 3; height: 100%; position: relative; border-right: 2px solid #00ff66; background: #02050a; }
         canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
         #radar-overlay-info { position: absolute; top: 15px; left: 20px; z-index: 10; background: rgba(1, 2, 4, 0.9); padding: 6px 12px; border: 1px solid #00ff66; font-weight: bold; font-size: 0.9rem; pointer-events: none; }
         
-        /* Dashboard rechts */
         .control-panel { flex: 1; background-color: #080d16; display: flex; flex-direction: column; padding: 15px; gap: 12px; overflow-y: auto; border-left: 1px solid #004411; color: #00ff66; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00ff66; padding-bottom: 8px; }
         .panel-header h2 { font-size: 1.1rem; color: #00ff66; font-weight: bold; }
@@ -31,7 +29,6 @@
         .ship-data-grid { display: grid; grid-template-columns: 80px 1fr; gap: 4px; font-size: 0.85rem; }
         .placeholder-text { color: #004411; font-style: italic; }
         
-        /* Marifoon Log */
         #vhf-log { height: 120px; overflow-y: auto; background: #010204; border: 1px solid #002208; padding: 6px; font-size: 0.8rem; margin-bottom: 6px; }
         #vhf-log p { margin-bottom: 4px; }
         .system-msg { color: #00ffbb; }
@@ -48,27 +45,23 @@
 <body>
 
     <div class="vts-container">
-        <!-- Radarscherm links -->
         <div id="radar-container">
             <div id="radar-overlay-info">SECTOR: SCHEVENINGEN TRAFFIC | VHF CH 21</div>
             <canvas id="radarCanvas"></canvas>
         </div>
 
-        <!-- Dashboard Bediening rechts -->
         <div class="control-panel">
             <div class="panel-header">
                 <h2>VTS RADAR CONSOLE</h2>
                 <div id="vts-clock">00:00:00 UTC</div>
             </div>
 
-            <!-- Radar Tools (EBL / VRM) -->
             <div class="tools-box">
                 <h3>Radar Tools</h3>
                 <button id="tool-ebl-vrm">Activeer EBL / VRM</button>
-                <div id="measurement-output">EBL/VRM inactief. Klik op de knop en klik daarna 2x op het radarscherm om te meten.</div>
+                <div id="measurement-output">EBL/VRM inactief. Klik op de knop en klik daarna 2x op het scherm.</div>
             </div>
 
-            <!-- Target Data & CPA -->
             <div class="ship-info-box">
                 <h3>Target Data & CPA</h3>
                 <div id="target-data">
@@ -77,7 +70,6 @@
                 <div id="cpa-warning-box"></div>
             </div>
 
-            <!-- VHF / Marifoon -->
             <div class="vhf-box">
                 <h3>VHF Communicatie</h3>
                 <div id="vhf-log">
@@ -95,7 +87,6 @@
         const canvas = document.getElementById('radarCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Geometrie instellingen voor vaste schaal zonder externe kaarten
         function resizeCanvas() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
@@ -103,12 +94,10 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Middelpunt van het radarscherm (Haveningang Scheveningen bevindt zich hier)
         const centerX = () => canvas.width / 2;
         const centerY = () => canvas.height / 2 + 100;
-        const scale = 25000; // Schaal om coördinaten om te rekenen naar pixels
+        const scale = 25000; 
 
-        // Omrekening van Nautische Coördinaten naar Scherm-Pixels
         function toPixels(lat, lon) {
             const x = centerX() + (lon - 4.240) * scale * Math.cos(52.115 * Math.PI / 180);
             const y = centerY() - (lat - 52.115) * scale;
@@ -121,17 +110,16 @@
             return { lat, lon };
         }
 
-        // 10 Varende Schepen Scenario Database
         let ships = [
             { id: 1, name: "SCH-118 ZEEAREND", lat: 52.120, lon: 4.220, heading: 135, speed: 8.0, type: "Trawler" },
-            { id: 2, name: "PACIFIC ROCK", lat: 52.145, lon: 4.170, heading: 90, speed: 0.0, type: "Bulk Carrier (Ten Anker)" },
+            { id: 2, name: "PACIFIC ROCK", lat: 52.145, lon: 4.170, heading: 90, speed: 0.0, type: "Bulk Carrier" },
             { id: 3, name: "EEMS TRADER", lat: 52.160, lon: 4.240, heading: 220, speed: 12.0, type: "Cargo Vessel" },
             { id: 4, name: "SCH-45 ALBATROS", lat: 52.106, lon: 4.248, heading: 315, speed: 5.0, type: "Kotter" },
             { id: 5, name: "ROTTERDAM STAR", lat: 52.130, lon: 4.100, heading: 80, speed: 15.5, type: "Container" },
             { id: 6, name: "ZEELAND LOODS", lat: 52.080, lon: 4.160, heading: 40, speed: 14.0, type: "Loodsboot" },
             { id: 7, name: "MIRFAK P-01", lat: 52.095, lon: 4.200, heading: 60, speed: 9.0, type: "Rijkswaterstaat" },
             { id: 8, name: "TRITON SLEEP", lat: 52.115, lon: 4.230, heading: 150, speed: 4.5, type: "Sleepboot" },
-            { id: 9, name: "STORK TANKER", lat: 52.150, lon: 4.195, heading: 0, speed: 0.0, type: "Tanker (Ten Anker)" },
+            { id: 9, name: "STORK TANKER", lat: 52.150, lon: 4.195, heading: 0, speed: 0.0, type: "Tanker" },
             { id: 10, name: "NL-PATROL 04", lat: 52.135, lon: 4.280, heading: 250, speed: 13.0, type: "Kustwacht" }
         ];
 
@@ -140,23 +128,18 @@
         let startPoint = null;
         let currentMousePos = null;
 
-        // Vaste Geografie van Scheveningen getekend via Vectoren
         const kustlijn = [
             [52.040, 4.120], [52.060, 4.150], [52.080, 4.210], [52.090, 4.235],
-            [52.0998, 4.2635], // Zuidelijk Havenhoofd
-            [52.1023, 4.2612], // Noordelijk Havenhoofd
-            [52.115, 4.280], [52.130, 4.310], [52.150, 4.350], [52.170, 4.380]
+            [52.0998, 4.2635], [52.1023, 4.2612], [52.115, 4.280], [52.130, 4.310], [52.150, 4.350], [52.170, 4.380]
         ];
 
         const ankerGebied = [
             [52.140, 4.160], [52.160, 4.190], [52.145, 4.220], [52.125, 4.190]
         ];
 
-        // Hoofd-tekenfunctie (Radar Verversingslus)
         function drawRadar() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Teken Achtergrond Radarringen (Afstandsringen)
             ctx.strokeStyle = '#002208';
             ctx.lineWidth = 1;
             for (let r = 50; r < canvas.width; r += 80) {
@@ -165,7 +148,6 @@
                 ctx.stroke();
             }
 
-            // Teken Kustlijn Vectoren
             ctx.strokeStyle = '#005511';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -176,7 +158,6 @@
             });
             ctx.stroke();
 
-            // Teken Havenhoofden (Ingang)
             const pNoord = toPixels(52.1023, 4.2612);
             const pZuid = toPixels(52.0998, 4.2635);
             ctx.strokeStyle = '#00ff66';
@@ -189,13 +170,36 @@
             ctx.font = '10px monospace';
             ctx.fillText("HAVENMOND", pNoord.x + 10, pNoord.y + 10);
 
-            // Teken Ankergebied 4 Boundary
             ctx.strokeStyle = '#006688';
             ctx.lineWidth = 1;
-            ctx.setLineDash([4, 4]);
             ctx.beginPath();
             ankerGebied.forEach((pt, idx) => {
                 const pos = toPixels(pt[0], pt[1]);
                 if (idx === 0) ctx.moveTo(pos.x, pos.y);
                 else ctx.lineTo(pos.x, pos.y);
             });
+            ctx.closePath();
+            ctx.stroke();
+            const pAnker = toPixels(52.143, 4.190);
+            ctx.fillStyle = '#00aaff';
+            ctx.fillText("ANKERGEBIED 4", pAnker.x - 35, pAnker.y);
+
+            ships.forEach(ship => {
+                const pos = toPixels(ship.lat, ship.lon);
+                const isSelected = ship.id === selectedShipId;
+
+                const vectorMinutes = 6;
+                const speedInDeg = (ship.speed * 0.000514) / 111320;
+                const rad = ((90 - ship.heading) * Math.PI) / 180;
+                const endLat = ship.lat + Math.sin(rad) * speedInDeg * (vectorMinutes * 60) * 15;
+                const endLon = ship.lon + Math.cos(rad) * speedInDeg * (vectorMinutes * 60) * 15;
+                const posEnd = toPixels(endLat, endLon);
+
+                ctx.strokeStyle = isSelected ? '#ffff00' : '#00ff66';
+                ctx.lineWidth = isSelected ? 2 : 1.5;
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(posEnd.x, posEnd.y);
+                ctx.stroke();
+
+Wees voorzichtig met code.ctx.fillStyle = isSelected ? '#ffff00' : '#00ff66';ctx.beginPath();ctx.arc(pos.x, pos.y, isSelected ? 6 : 4.5, 0, 2 * Math.PI);ctx.fill();ctx.fillText(ship.name, pos.x + 8, pos.y - 4);ctx.fillText(${String(Math.round(ship.heading)).padStart(3,'0')}°/${ship.speed.toFixed(1)}KT, pos.x + 8, pos.y + 6);});if (eblMode && startPoint && currentMousePos) {ctx.strokeStyle = '#ffaa00';ctx.lineWidth = 1;ctx.beginPath();ctx.moveTo(startPoint.x, startPoint.y);ctx.lineTo(currentMousePos.x, currentMousePos.y);ctx.stroke();ctx.strokeStyle = 'rgba(255, 170, 0, 0.2)';const dx = currentMousePos.x - startPoint.x;const dy = currentMousePos.y - startPoint.y;const r = Math.sqrt(dxdx + dydy);ctx.beginPath();ctx.arc(startPoint.x, startPoint.y, r, 0, 2 * Math.PI);ctx.stroke();}}canvas.addEventListener('click', (e) => {const rect = canvas.getBoundingClientRect();const clickX = e.clientX - rect.left;const clickY = e.clientY - rect.top;if (eblMode) {if (!startPoint) {startPoint = { x: clickX, y: clickY };document.getElementById('measurement-output').innerText = "[EBL/VRM] Klik nu op je einddoel...";} else {const coord1 = toCoords(startPoint.x, startPoint.y);const coord2 = toCoords(clickX, clickY);const lat1 = coord1.lat * Math.PI / 180;const lat2 = coord2.lat * Math.PI / 180;const dLon = (coord2.lon - coord1.lon) * Math.PI / 180;const y = Math.sin(dLon) * Math.cos(lat2);const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);let bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;const dx = clickX - startPoint.x;const dy = clickY - startPoint.y;const pixelDist = Math.sqrt(dxdx + dydy);const meters = (pixelDist / scale) * 111320;const nm = meters / 1852;const kabels = nm * 10;document.getElementById('measurement-output').innerHTML = <strong>PEILING (EBL):</strong> ${bearing.toFixed(0)}° True<br> <strong>AFSTAND (VRM):</strong><br> • ${meters.toFixed(0)}m | • ${nm.toFixed(2)}NM | • ${kabels.toFixed(1)} Kb;eblMode = false;document.getElementById('tool-ebl-vrm').classList.remove('active-tool');}return;}let foundTarget = false;ships.forEach(ship => {const pos = toPixels(ship.lat, ship.lon);const dist = Math.sqrt((clickX - pos.x)**2 + (clickY - pos.y)**2);if (dist < 12) {selectedShipId = ship.id;updateShipInfoBox(ship);foundTarget = true;}});if (!foundTarget) {selectedShipId = null;document.getElementById('target-data').innerHTML = <p class="placeholder-text">Klik op een target (groene stip) op de radar...</p>;document.getElementById('cpa-warning-box').innerHTML = "";}});canvas.addEventListener('mousemove', (e) => {if (!eblMode || !startPoint) return;const rect = canvas.getBoundingClientRect();currentMousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };drawRadar();});function updateShipInfoBox(ship) {document.getElementById('target-data').innerHTML = <div class="ship-data-grid"> <span>TARGET:</span><strong>${ship.name}</strong> <span>TYPE:</span><span>${ship.type}</span> <span>COG:</span><span>${Math.round(ship.heading)}° T</span> <span>SOG:</span><span>${ship.speed.toFixed(1)} KT</span> <span>POS:</span><span>${ship.lat.toFixed(4)}N/${ship.lon.toFixed(4)}E</span> </div>;calculateCPA(ship);}function calculateCPA(selectedShip) {let warningBox = document.getElementById('cpa-warning-box');warningBox.innerHTML = "";ships.forEach(other => {if (other.id === selectedShip.id) return;const distanceNM = Math.sqrt((selectedShip.lat - other.lat)**2 + (selectedShip.lon - other.lon)**2) * 60;const kabels = distanceNM * 10;if (distanceNM < 0.5 && (selectedShip.speed > 0 || other.speed > 0)) {warningBox.innerHTML += <div class="danger-flash">⚠️ CPA RISK: ${other.name} (${kabels.toFixed(1)} Kabels)</div>;}});}document.getElementById('tool-ebl-vrm').addEventListener('click', function() {eblMode = !eblMode;startPoint = null;if (eblMode) {this.classList.add('active-tool');document.getElementById('measurement-output').innerText = "[EBL/VRM] Klik op het startpunt op het scherm...";} else {this.classList.remove('active-tool');document.getElementById('measurement-output').innerText = "EBL/VRM inactief.";}});document.getElementById('send-btn').addEventListener('click', handleVTSCommand);document.getElementById('vhf-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleVTSCommand(); });function handleVTSCommand() {const input = document.getElementById('vhf-input');const text = input.value.trim().toLowerCase();if (!text) return;if (!selectedShipId) {logMessage("SYSTEM", "Fout: Selecteer eerst een target.", "system-msg");input.value = ""; return;}const ship = ships.find(s => s.id === selectedShipId);logMessage("VTS SCHEVENINGEN", ${ship.name}, ${input.value}, "vts-msg");input.value = "";setTimeout(() => {const num = text.match(/\d+/);if (text.includes("koers") && num) {ship.heading = parseInt(num) % 360;logMessage(ship.name, Begrepen VTS, sturen koers ${ship.heading}°, "ship-msg");} else if (text.includes("snelheid") && num) {ship.speed = parseFloat(num);logMessage(ship.name, Begrepen VTS, sturen vaart ${ship.speed} KT., "ship-msg");} else {logMessage(ship.name, "Herhaal aub? Gebruik 'koers [getal]' of 'snelheid [getal]'.", "ship-msg");}if(selectedShipId === ship.id) updateShipInfoBox(ship);}, 1000);}function logMessage(sender, text, type) {const log = document.getElementById('vhf-log');log.innerHTML += <p class="${type}"><strong>${sender}:</strong> ${text}</p>;log.scrollTop = log.scrollHeight;}setInterval(() => {ships.forEach(ship => {if (ship.speed === 0) return;const speedInDeg = (ship.speed * 0.000514) / 111320;const rad = ((90 - ship.heading) * Math.PI) / 180;ship.lat += Math.sin(rad) * speedInDeg * 15;ship.lon += Math.cos(rad) * speedInDeg * 15;if (ship.id === 1 && ship.lat < 52.106 && ship.heading === 135) {ship.heading = 155;ship.speed = 3.5;logMessage(ship.name, "Passeert de havenhoofden. Vaart verminderd.", "ship-msg");}if (ship.lat > 52.22 || ship.lat < 52.02 || ship.lon < 4.05 || ship.lon > 4.40) {if (ship.id === 1) { ship.lat = 52.120; ship.lon = 4.220; ship.heading = 135; ship.speed = 8.0; }else { ship.lat = 52.130; ship.lon = 4.100; ship.heading = 80; }}});drawRadar();if (selectedShipId) {const currentActive = ships.find(s => s.id === selectedShipId);if (currentActive) updateShipInfoBox(currentActive);}document.getElementById('vts-clock').innerText = new Date().toUTCString().substring(17, 25) + " UTC";}, 1000);drawRadar();
