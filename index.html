@@ -1,0 +1,92 @@
+html<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Mijn Eigen VTS Simulator</title>
+    <!-- Leaflet Kaart CSS -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        body { margin: 0; padding: 0; background: #111; color: #fff; font-family: sans-serif; }
+        #map { height: 100vh; width: 100vw; }
+        #vts-panel { position: absolute; top: 10px; right: 10px; background: rgba(10,25,20,0.9); padding: 15px; border-radius: 5px; z-index: 1000; width: 280px; border: 1px solid #00ff00; box-shadow: 0 0 10px rgba(0,255,0,0.3); }
+        h3 { margin-top: 0; color: #00ff00; text-transform: uppercase; letter-spacing: 1px; }
+        .ship-entry { padding: 5px 0; border-bottom: 1px solid #333; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <div id="vts-panel">
+        <h3>VTS Radar Control</h3>
+        <p>Status: <span style="color:#00ff00;">ONLINE</span></p>
+        <p>Actieve Targets: <span id="ship-count">5</span></p>
+        <hr style="border-color:#333;">
+        <div id="ship-info"><i>Klik op een groen target op de kaart voor AIS-informatie.</i></div>
+    </div>
+    
+    <div id="map"></div>
+
+    <!-- Leaflet Kaart JavaScript -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        // 1. Initialiseer de kaart centraal op de haven van Rotterdam (Europoort)
+        const map = L.map('map').setView([51.96, 4.05], 11);
+
+        // 2. Laad de OpenStreetMap achtergrond
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 3. Voeg de Maritieme OpenSeaMap laag toe voor boeien, lichten en vaargeulen
+        L.tileLayer('https://openseamap.org{z}/{x}/{y}.png', {
+            attribution: '© OpenSeaMap'
+        }).addTo(map);
+
+        // 4. De database met jouw 5 eigen virtuele targets
+        let ships = [
+            { id: 1, name: "Rotterdam Express", lat: 51.98, lng: 3.90, speedX: 0.0005, speedY: -0.0001, course: 105, mmsi: "244123456", type: "Cargo" },
+            { id: 2, name: "Ocean Carrier", lat: 51.95, lng: 4.20, speedX: -0.0004, speedY: 0.0000, course: 270, mmsi: "244987654", type: "Tanker" },
+            { id: 3, name: "Maasvlakte Shuttle", lat: 51.96, lng: 3.98, speedX: -0.0002, speedY: 0.0003, course: 315, mmsi: "244555666", type: "Container" },
+            { id: 4, name: "Pilot Launch Polaris", lat: 52.00, lng: 4.00, speedX: 0.0008, speedY: -0.0005, course: 135, mmsi: "244333222", type: "Loodsboot" },
+            { id: 5, name: "Nordic Star", lat: 51.92, lng: 3.85, speedX: 0.0003, speedY: 0.0002, course: 45, mmsi: "244888999", type: "LNG Tanker" }
+        ];
+
+        let markers = {};
+
+        // 5. Teken de schepen als groene VTS-stippen op de kaart
+        ships.forEach(ship => {
+            let marker = L.circleMarker([ship.lat, ship.lng], {
+                color: '#00ff00', 
+                fillColor: '#00ff00',
+                radius: 7,
+                fillOpacity: 0.9,
+                weight: 2
+            }).addTo(map);
+
+            // Zorg dat er info verschijnt in het VTS-paneel als je op een schip klikt
+            marker.on('click', () => {
+                document.getElementById('ship-info').innerHTML = `
+                    <div class="ship-entry"><b>Naam:</b> ${ship.name}</div>
+                    <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
+                    <div class="ship-entry"><b>Type:</b> ${ship.type}</div>
+                    <div class="ship-entry"><b>Koers:</b> ${ship.course}°</div>
+                    <div class="ship-entry"><b>Positie:</b> ${ship.lat.toFixed(4)}, ${ship.lng.toFixed(4)}</div>
+                `;
+            });
+
+            markers[ship.id] = marker;
+        });
+
+        // 6. De Simulatie-Engine: verplaats de schepen elke seconde
+        setInterval(() => {
+            ships.forEach(ship => {
+                // Update coördinaten op basis van hun individuele snelheid
+                ship.lat += ship.speedY;
+                ship.lng += ship.speedX;
+
+                // Update de positie van de stip op de kaart
+                markers[ship.id].setLatLng([ship.lat, ship.lng]);
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
