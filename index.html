@@ -2,133 +2,102 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>VTS Simulator - Scheveningen Haven</title>
-    <!-- Ultra-stabiele Leaflet Kaart CSS via betrouwbaar CDN -->
+    <title>VTS Simulator - Scheveningen</title>
+    <!-- Leaflet Kaart CSS via CDN -->
     <link rel="stylesheet" href="https://cloudflare.com" />
     <style>
-        body { margin: 0; padding: 0; background: #0a0f1d; color: #fff; font-family: 'Courier New', monospace; }
-        #map { height: 100vh; width: 100vw; }
+        /* Forceer dat de browser de kaart op volledig scherm toont */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b111e; font-family: monospace; }
+        #map { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Modern VTS controlepaneel over de kaart heen */
         #vts-panel { 
             position: absolute; 
-            top: 15px; 
-            right: 15px; 
-            background: rgba(6, 17, 34, 0.85); 
+            top: 20px; 
+            right: 20px; 
+            background: rgba(6, 18, 36, 0.9); 
             padding: 20px; 
-            border-radius: 4px; 
+            border-radius: 6px; 
             z-index: 1000; 
-            width: 300px; 
+            width: 280px; 
             border: 2px solid #00ffcc; 
             box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
-            backdrop-filter: blur(5px);
+            color: #fff;
         }
-        h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 18px; text-transform: uppercase; text-shadow: 0 0 5px #00ffcc; }
-        .station-info { font-size: 12px; color: #8ab4f8; margin-bottom: 15px; }
-        .ship-entry { padding: 8px 0; border-bottom: 1px dashed #00ffcc44; font-size: 12px; line-height: 1.4; }
-        .ship-title { font-weight: bold; color: #fff; }
-        .highlight { color: #ffcc00; }
+        h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; letter-spacing: 1px; }
+        .ship-entry { padding: 6px 0; border-bottom: 1px dashed rgba(0,255,204,0.2); font-size: 12px; }
+        .highlight { color: #ffcc00; font-weight: bold; }
     </style>
 </head>
 <body>
 
+    <!-- Het VTS Controlepaneel aan de rechterkant -->
     <div id="vts-panel">
-        <h2>VTS SCHEVENINGEN</h2>
-        <div class="station-info">SECTOR RADAR | CALL: SCHEVENINGEN HARBOUR</div>
-        <p>STATUS: <span style="color:#00ff00; font-weight:bold; text-shadow: 0 0 5px #00ff00;">OPERATIONAL</span></p>
-        <hr style="border-color:#00ffcc33;">
-        <div id="ship-info"><i>Selecteer een target op het radarscherm voor AIS-data link.</i></div>
+        <h2>VTS RADAR CONTROL</h2>
+        <p style="font-size:12px; margin:0 0 10px 0;">STATUS: <span style="color:#00ff00; font-weight:bold;">ONLINE</span></p>
+        <p style="font-size:12px; margin:0;">ACTIEVE TARGETS: <span class="highlight">2</span></p>
+        <hr style="border-color: rgba(0,255,204,0.3); margin: 10px 0;">
+        <div id="ship-info"><i>Klik op een target voor AIS-informatie.</i></div>
     </div>
     
+    <!-- De Kaart Container -->
     <div id="map"></div>
 
-    <!-- Ultra-stabiele Leaflet Kaart JavaScript -->
+    <!-- Leaflet Kaart JavaScript via CDN -->
     <script src="https://cloudflare.com"></script>
     <script>
-        // 1. Initialiseer de kaart exact gecentreerd op de havenmonding van Scheveningen
-        // We zetten het zoomniveau op 14 zodat de haven en de naderende schepen perfect in beeld zijn.
-        const map = L.map('map', {
-            zoomControl: true,
-            boxZoom: false,
-            doubleClickZoom: false
-        }).setView([52.103, 4.250], 14);
+        // 1. Initialiseer de kaart op Scheveningen
+        const map = L.map('map', { zoomControl: true }).setView([52.103, 4.250], 13);
 
-        // 2. Laad een gegarandeerd werkende Satelliet/Luchtfoto kaart (Esri World Imagery)
-        // Dit voorkomt het zwarte scherm en toont direct de echte haven van Scheveningen.
-        L.tileLayer('https://arcgisonline.com{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri & DigitalGlobe'
+        // 2. Ultra-stabiele, lichte radar achtergrondkaart (CartoDB Dark Matter)
+        // Deze laadt gegarandeerd sneller en geeft direct een échte radar-look!
+        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap, © CARTO'
         }).addTo(map);
 
-        // 3. Markeer het VTS Station (De Verkeerscentrale op het havenhoofd)
-        L.circleMarker([52.1012, 4.2618], {
-            color: '#ff3333',
-            fillColor: '#ff3333',
-            radius: 6,
-            fillOpacity: 1
-        }).addTo(map).bindPopup("<b>VTS Traffic Center Scheveningen</b>");
-
-        // 4. De 2 schepen die richting de havenmonding varen
+        // 3. De 2 actieve targets voor Scheveningen
         let ships = [
-            { 
-                id: 1, 
-                name: "SCH-24 SCHEVENINGEN", 
-                lat: 52.115, 
-                lng: 4.220, 
-                speedX: 0.00015,  // Beweegt naar het zuidoosten (richting haven)
-                speedY: -0.00012, 
-                course: 130, 
-                mmsi: "244670000", 
-                type: "Trawler (Vissersschip)" 
-            },
-            { 
-                id: 2, 
-                name: "PILOT LAUNCH ALTAIR", 
-                lat: 52.095, 
-                lng: 4.230, 
-                speedX: 0.00018,  // Beweegt naar het noordoosten
-                speedY: 0.00014, 
-                course: 50, 
-                mmsi: "244123999", 
-                type: "Loodsboot" 
-            }
+            { id: 1, name: "SCH-24 SCHEVENINGEN", lat: 52.115, lng: 4.210, speedX: 0.00015, speedY: -0.00012, course: 130, mmsi: "244670000", type: "Visserstrawler" },
+            { id: 2, name: "PILOT LAUNCH ALTAIR", lat: 52.092, lng: 4.225, speedX: 0.00018, speedY: 0.00014, course: 50, mmsi: "244123999", type: "Loodsboot" }
         ];
 
         let markers = {};
 
-        // 5. Teken de 2 targets als felle VTS-radarsymbolen op de kaart
+        // 4. Teken de schepen als felle VTS-stippen
         ships.forEach(ship => {
             let marker = L.circleMarker([ship.lat, ship.lng], {
                 color: '#00ffcc', 
-                fillColor: '#061122',
+                fillColor: '#061224',
                 radius: 8,
-                fillOpacity: 0.8,
+                fillOpacity: 0.9,
                 weight: 2
             }).addTo(map);
 
-            // Toon de informatie in het VTS-paneel aan de rechterkant bij een klik
+            // Koppel de klik-actie om data naar het rechterpaneel te sturen
             marker.on('click', () => {
                 document.getElementById('ship-info').innerHTML = `
-                    <div class="ship-entry"><span class="ship-title">TARGET ID:</span> <span class="highlight">${ship.name}</span></div>
-                    <div class="ship-entry"><span class="ship-title">MMSI:</span> ${ship.mmsi}</div>
-                    <div class="ship-entry"><span class="ship-title">TYPE:</span> ${ship.type}</div>
-                    <div class="ship-entry"><span class="ship-title">HEADING:</span> ${ship.course}°</div>
-                    <div class="ship-entry"><span class="ship-title">LAT:</span> ${ship.lat.toFixed(5)}</div>
-                    <div class="ship-entry"><span class="ship-title">LON:</span> ${ship.lng.toFixed(5)}</div>
+                    <div class="ship-entry"><b>NAAM:</b> <span class="highlight">${ship.name}</span></div>
+                    <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
+                    <div class="ship-entry"><b>TYPE:</b> ${ship.type}</div>
+                    <div class="ship-entry"><b>KOERS:</b> ${ship.course}°</div>
+                    <div class="ship-entry"><b>POS:</b> ${ship.lat.toFixed(4)}, ${ship.lng.toFixed(4)}</div>
                 `;
             });
 
             markers[ship.id] = marker;
         });
 
-        // 6. De VTS-Engine: Update de posities live elke seconde
+        // 5. De VTS-Engine: Beweeg de schepen live elke seconde
         setInterval(() => {
             ships.forEach(ship => {
-                // Bereken de nieuwe locatie van de schepen
                 ship.lat += ship.speedY;
                 ship.lng += ship.speedX;
-
-                // Verplaats het symbool op de satellietkaart
                 markers[ship.id].setLatLng([ship.lat, ship.lng]);
             });
         }, 1000);
+
+        // 6. Forceer de browser om de kaart direct goed uit te lijnen bij het opstarten
+        setTimeout(() => { map.invalidateSize(); }, 200);
     </script>
 </body>
 </html>
