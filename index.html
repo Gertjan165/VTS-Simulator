@@ -1,8 +1,8 @@
-html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>VTS Radar Simulator - Fail-Safe Edition</title>
+    <title>VTS Scheveningen - Advanced Radar Simulator</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #02060c; font-family: 'Courier New', monospace; color: #fff; }
         #container { display: flex; width: 100vw; height: 100vh; }
@@ -10,96 +10,140 @@ html<!DOCTYPE html>
         /* Het Radarschermgebied */
         #radar-area { 
             flex: 1; 
-            background: #040d1a; 
+            background: #030a16; 
             position: relative; 
             border: 2px solid #00ffcc; 
             margin: 15px; 
             border-radius: 8px;
-            box-shadow: inset 0 0 20px rgba(0,255,204,0.2);
+            box-shadow: inset 0 0 30px rgba(0,255,204,0.15);
+            overflow: hidden;
         }
-        
-        /* De Schepen (Targets) als felle, klikbare blokken */
+
+        /* --- ZELFGEBOUWDE GEOGRAFIE VAN SCHEVENINGEN --- */
+        /* De Kustlijn (Scheveningen Strand) */
+        .coastline { position: absolute; right: 0; bottom: 0; top: 0; width: 30%; background: rgba(235, 195, 110, 0.08); border-left: 3px solid rgba(235, 195, 110, 0.4); z-index: 1; }
+        /* Noorderpier */
+        .pier-north { position: absolute; left: 60%; top: 48%; width: 12%; height: 4px; background: #555; border: 1px solid #ffcc00; z-index: 2; transform: rotate(-15deg); }
+        /* Zuiderpier */
+        .pier-south { position: absolute; left: 63%; top: 54%; width: 10%; height: 4px; background: #555; border: 1px solid #ffcc00; z-index: 2; transform: rotate(-25deg); }
+        /* Havenlicht Groen (Noorderpier) */
+        .light-green { position: absolute; left: 60%; top: 46%; width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 15px #00ff00; z-index: 3; }
+        /* Havenlicht Rood (Zuiderpier) */
+        .light-red { position: absolute; left: 63%; top: 52%; width: 8px; height: 8px; background: #ff3333; border-radius: 50%; box-shadow: 0 0 15px #ff3333; z-index: 3; }
+        /* Lichtenlijn / Geleidelicht (Leading Line naar de havenmonding) */
+        .leading-line { position: absolute; left: 10%; top: 50%; width: 52%; height: 1px; border-top: 2px dashed rgba(255, 255, 0, 0.4); z-index: 1; transform: rotate(-5deg); transform-origin: right; }
+        .leading-line-text { position: absolute; left: 12%; top: 46%; font-size: 11px; color: #ffcc00; opacity: 0.7; }
+
+        /* De Schepen (Targets) */
         .vessel {
             position: absolute;
-            width: 24px;
-            height: 24px;
+            width: 16px;
+            height: 16px;
             background: #00ffcc;
             border: 2px solid #fff;
-            border-radius: 4px;
+            border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 0 10px #00ffcc;
-            transition: top 0.1s linear, left 0.1s linear;
+            box-shadow: 0 0 12px #00ffcc;
+            z-index: 10;
+            transform: translate(-50%, -50%);
         }
         .vessel::after {
             content: attr(data-name);
             position: absolute;
-            top: 28px;
-            left: -20px;
-            font-size: 10px;
+            top: 20px;
+            left: 10px;
+            font-size: 11px;
             white-space: nowrap;
-            background: rgba(0,0,0,0.7);
-            padding: 2px 5px;
+            background: rgba(0,0,0,0.85);
+            padding: 2px 6px;
+            border: 1px solid rgba(0,255,204,0.3);
             border-radius: 3px;
+            color: #00ffcc;
         }
         
         /* Rechter VTS Controlepaneel */
         #vts-panel { 
-            width: 320px; 
-            background: rgba(6, 18, 36, 0.95); 
+            width: 340px; 
+            background: rgba(6, 18, 36, 0.98); 
             padding: 20px; 
             border-left: 2px solid #00ffcc; 
             box-shadow: -5px 0 15px rgba(0, 255, 204, 0.2);
             box-sizing: border-box;
+            overflow-y: auto;
         }
-        h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffcc; }
-        .ship-entry { padding: 8px 0; border-bottom: 1px dashed rgba(0,255,204,0.2); font-size: 12px; }
+        h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 15px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffcc; text-transform: uppercase; }
+        .ship-entry { padding: 6px 0; border-bottom: 1px dashed rgba(0,255,204,0.15); font-size: 12px; }
         .highlight { color: #ffcc00; font-weight: bold; }
-        .btn { background: #00ffcc; color: #02060c; border: none; padding: 10px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; margin-top: 15px; width: 100%; font-size: 13px; }
+        
+        /* Controls voor koers en snelheid */
+        .control-group { margin-top: 15px; background: rgba(0, 255, 204, 0.05); padding: 12px; border-radius: 4px; border: 1px solid rgba(0, 255, 204, 0.2); }
+        .control-label { font-size: 12px; color: #8ab4f8; display: block; margin-bottom: 5px; }
+        .control-input { width: 80px; background: #02060c; border: 1px solid #00ffcc; color: #fff; padding: 5px; font-family: monospace; font-size: 13px; text-align: center; border-radius: 3px; }
+        .btn { background: #00ffcc; color: #02060c; border: none; padding: 8px 12px; font-family: monospace; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 12px; margin-left: 5px; }
         .btn:hover { background: #ffcc00; }
     </style>
 </head>
 <body>
 
     <div id="container">
-        <!-- Links: Het fysieke radarscherm waar de targets IN staan -->
-        <div id="radar-area" id="radarScreen">
-            <!-- Schip 1 -->
-            <div id="ship1" class="vessel" data-name="SCH-24" style="left: 20%; top: 30%;" onclick="selectShip(1)"></div>
-            <!-- Schip 2 -->
-            <div id="ship2" class="vessel" data-name="ALTAIR" style="left: 70%; top: 60%;" onclick="selectShip(2)"></div>
+        <!-- Links: Het fysieke radarscherm met ingebouwde Scheveningen geografie -->
+        <div id="radar-area">
+            <div class="coastline"></div>
+            <div class="pier-north"></div>
+            <div class="pier-south"></div>
+            <div class="light-green"></div>
+            <div class="light-red"></div>
+            <div class="leading-line"></div>
+            <div class="leading-line-text">LICHTENLIJN 112°</div>
+
+            <!-- Targets -->
+            <div id="ship1" class="vessel" data-name="SCH-24" style="left: 15%; top: 35%;" onclick="selectShip(1)"></div>
+            <div id="ship2" class="vessel" data-name="ALTAIR" style="left: 45%; top: 75%;" onclick="selectShip(2)"></div>
         </div>
 
-        <!-- Rechts: Het VTS Informatiepaneel -->
+        <!-- Rechts: Het geavanceerde VTS Informatie- en Besturingspaneel -->
         <div id="vts-panel">
-            <h2>VTS RADAR CONTROL</h2>
-            <p style="font-size:11px; margin:0 0 10px 0; color: #8ab4f8;">SECTOR: SCHEVENINGEN APPROACH</p>
-            <p style="font-size:12px; margin:0;">STATUS: <span style="color:#00ff00; font-weight:bold;">STANDALONE OK</span></p>
-            <p style="font-size:12px; margin:5px 0 0 0;">ACTIEVE TARGETS: <span class="highlight">2</span></p>
-            <hr style="border-color: rgba(0,255,204,0.3); margin: 15px 0;">
+            <h2>VTS SCHEVENINGEN</h2>
+            <p style="font-size:11px; margin:0 0 10px 0; color: #8ab4f8;">TRAFFIC CENTER | HARBOUR APPROACH</p>
+            <p style="font-size:12px; margin:0;">STATUS: <span style="color:#00ff00; font-weight:bold;">OPERATIONAL</span></p>
+            <hr style="border-color: rgba(0,255,204,0.3); margin: 12px 0;">
             
-            <div id="ship-info"><i>Klik op een bewegend target aan de linkerkant voor AIS-data.</i></div>
+            <div id="ship-info"><i>Klik op een target (SCH-24 of ALTAIR) om de koers en snelheid aan te passen.</i></div>
+            
+            <!-- Besturingsknoppen (worden actief bij selectie) -->
+            <div id="controls-panel" style="display: none;">
+                <div class="control-group">
+                    <span class="control-label">Nieuwe Koers (0 - 350°):</span>
+                    <input type="number" id="courseInput" class="control-input" min="0" max="359" placeholder="bv. 112">
+                    <button class="btn" onclick="updateCourse()">SET</button>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Nieuwe Snelheid (kts):</span>
+                    <input type="number" id="speedInput" class="control-input" min="0" max="30" placeholder="bv. 12">
+                    <button class="btn" onclick="updateSpeed()">SET</button>
+                </div>
+            </div>
             
             <hr style="border-color: rgba(0,255,204,0.3); margin: 15px 0;">
-            <h2>ALARM STATUS</h2>
-            <div id="alarm-box" style="color: #00ff00; font-size: 12px; font-weight: bold;">CPA STATUS: VEILIG</div>
+            <h2>ALARM SYSTEM</h2>
+            <div id="alarm-box" style="color: #00ff00; font-size: 12px; font-weight: bold;">CPA: VEILIG</div>
         </div>
     </div>
 
     <script>
-        // Posities en snelheden van de 2 targets
+        // Data van de schepen. dx en dy worden berekend op basis van koers en snelheid.
         let ships = {
-            1: { name: "SCH-24 SCHEVENINGEN", x: 20, y: 30, dx: 0.1, dy: 0.05, mmsi: "244670000", type: "Visserstrawler", heading: 120 },
-            2: { name: "PILOT LAUNCH ALTAIR", x: 70, y: 60, dx: -0.08, dy: -0.06, mmsi: "244123999", type: "Loodsboot", heading: 310 }
+            1: { name: "SCH-24 SCHEVENINGEN", x: 15, y: 35, speedKts: 8, headingDeg: 112, mmsi: "244670000", type: "Visserstrawler" },
+            2: { name: "PILOT LAUNCH ALTAIR", x: 45, y: 75, speedKts: 14, headingDeg: 45, mmsi: "244123999", type: "Loodsboot" }
         };
 
         let currentSelected = null;
 
-        // Selecteer een schip en toon direct de data rechts
+        // Selecteer een schip en toon de actuele data + besturingspaneel
         window.selectShip = function(id) {
             currentSelected = id;
             let ship = ships[id];
             
-            // Reset alle kleuren en maak de geselecteerde geel
             document.querySelectorAll('.vessel').forEach(v => v.style.background = '#00ffcc');
             document.getElementById('ship' + id).style.background = '#ffcc00';
 
@@ -107,61 +151,42 @@ html<!DOCTYPE html>
                 <div class="ship-entry"><b>TARGET:</b> <span class="highlight">${ship.name}</span></div>
                 <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
                 <div class="ship-entry"><b>TYPE:</b> ${ship.type}</div>
-                <div class="ship-entry"><b>HEADING:</b> ${ship.heading}°</div>
-                <div class="ship-entry"><b>SPEED:</b> 12.4 KNTS</div>
-                <button class="btn" onclick="alterCourse()">⚠️ WIJZIG KOERS (INGRIJPEN)</button>
+                <div class="ship-entry"><b>ACTUELE KOERS:</b> ${ship.headingDeg}°</div>
+                <div class="ship-entry"><b>ACTUELE SNELHEID:</b> ${ship.speedKts} KNTS</div>
             `;
+            
+            // Toon de invoervakken
+            document.getElementById('controls-panel').style.display = 'block';
+            document.getElementById('courseInput').value = ship.headingDeg;
+            document.getElementById('speedInput').value = ship.speedKts;
         };
 
-        // De koerswijziging-knop (De operator grijpt in)
-        window.alterCourse = function() {
-            if (currentSelected) {
-                let ship = ships[currentSelected];
-                // Keer de richting om zodat ze direct wegdraaien en niet botsen
-                ship.dx = -ship.dx;
-                ship.dy = -ship.dy;
-                ship.heading = (ship.heading + 180) % 360;
-                
-                // Update het paneel
-                selectShip(currentSelected);
+        // Pas de koers aan op basis van de input van de operator
+        window.updateCourse = function() {
+            let val = parseInt(document.getElementById('courseInput').value);
+            if (currentSelected && !isNaN(val) && val >= 0 && val < 360) {
+                ships[currentSelected].headingDeg = val;
+                selectShip(currentSelected); // Ververs het infoscherm
             }
         };
 
-        // De simulatie-engine (Beweegt de blokjes live over het scherm)
+        // Pas de snelheid aan op basis van de input van de operator
+        window.updateSpeed = function() {
+            let val = parseFloat(document.getElementById('speedInput').value);
+            if (currentSelected && !isNaN(val) && val >= 0) {
+                ships[currentSelected].speedKts = val;
+                selectShip(currentSelected); // Ververs het infoscherm
+            }
+        };
+
+        // De simulatie-engine (Beweegt de schepen realistisch op basis van hun koershoek)
         setInterval(() => {
             for (let id in ships) {
                 let ship = ships[id];
                 
-                // Update posities
-                ship.x += ship.dx;
-                ship.y += ship.dy;
-
-                // Grenzen bewaken (binnen het scherm houden)
-                if (ship.x < 5 || ship.x > 90) ship.dx = -ship.dx;
-                if (ship.y < 5 || ship.y > 90) ship.dy = -ship.dy;
-
-                // Verplaats het HTML-element op het scherm
-                let el = document.getElementById('ship' + id);
-                if (el) {
-                    el.style.left = ship.x + '%';
-                    el.style.top = ship.y + '%';
-                }
-            }
-
-            // Bereken onderlinge afstand voor het CPA alarm
-            let dist = Math.sqrt((ships[1].x - ships[2].x)**2 + (ships[1].y - ships[2].y)**2);
-            let alarmBox = document.getElementById('alarm-box');
-            
-            if (dist < 10) {
-                alarmBox.innerHTML = "⚠️ ALARM: CLOSE APPROACH! CRITICAL";
-                alarmBox.style.color = "#ff3333";
-                document.getElementById('ship1').style.background = '#ff3333';
-                document.getElementById('ship2').style.background = '#ff3333';
-            } else {
-                alarmBox.innerHTML = "CPA STATUS: VEILIG";
-                alarmBox.style.color = "#00ff00";
-            }
-        }, 100);
-    </script>
-</body>
-</html>
+                // Wiskunde om koersgraden en knopen om te zetten naar X/Y beweging op het scherm
+                let radians = (ship.headingDeg - 90) * (Math.PI / 180);
+                let factor = ship.speedKts * 0.004; // Schalingsfactor voor loopsnelheid
+                
+                ship.x += Math.cos(radians) * factor;
+                ship.y += Math.sin(radians) * factor;
