@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>VTS Scheveningen - Advanced Radar Simulator</title>
+    <title>VTS Scheveningen - Fixed Radar Simulator</title>
     <style>
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #02060c; font-family: 'Courier New', monospace; color: #fff; }
         #container { display: flex; width: 100vw; height: 100vh; }
@@ -19,20 +19,23 @@
             overflow: hidden;
         }
 
-        /* --- ZELFGEBOUWDE GEOGRAFIE VAN SCHEVENINGEN --- */
-        /* De Kustlijn (Scheveningen Strand) */
-        .coastline { position: absolute; right: 0; bottom: 0; top: 0; width: 30%; background: rgba(235, 195, 110, 0.08); border-left: 3px solid rgba(235, 195, 110, 0.4); z-index: 1; }
-        /* Noorderpier */
-        .pier-north { position: absolute; left: 60%; top: 48%; width: 12%; height: 4px; background: #555; border: 1px solid #ffcc00; z-index: 2; transform: rotate(-15deg); }
-        /* Zuiderpier */
-        .pier-south { position: absolute; left: 63%; top: 54%; width: 10%; height: 4px; background: #555; border: 1px solid #ffcc00; z-index: 2; transform: rotate(-25deg); }
-        /* Havenlicht Groen (Noorderpier) */
-        .light-green { position: absolute; left: 60%; top: 46%; width: 8px; height: 8px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 15px #00ff00; z-index: 3; }
-        /* Havenlicht Rood (Zuiderpier) */
-        .light-red { position: absolute; left: 63%; top: 52%; width: 8px; height: 8px; background: #ff3333; border-radius: 50%; box-shadow: 0 0 15px #ff3333; z-index: 3; }
-        /* Lichtenlijn / Geleidelicht (Leading Line naar de havenmonding) */
-        .leading-line { position: absolute; left: 10%; top: 50%; width: 52%; height: 1px; border-top: 2px dashed rgba(255, 255, 0, 0.4); z-index: 1; transform: rotate(-5deg); transform-origin: right; }
-        .leading-line-text { position: absolute; left: 12%; top: 46%; font-size: 11px; color: #ffcc00; opacity: 0.7; }
+        /* --- STABIELE GEOGRAFIE VAN SCHEVENINGEN (GRID BASED) --- */
+        .coastline { position: absolute; right: 0; top: 0; bottom: 0; width: 25%; background: rgba(235, 195, 110, 0.05); border-left: 2px solid rgba(235, 195, 110, 0.3); z-index: 1; }
+        
+        /* De Havenmonding */
+        .harbor-entrance { position: absolute; left: 75%; top: 50%; width: 10px; height: 10px; transform: translate(-50%, -50%); z-index: 2; }
+        
+        /* Pieren gekoppeld aan de monding zodat ze NOOIT verschuiven */
+        .pier-north { position: absolute; right: 5px; bottom: 15px; width: 90px; height: 5px; background: #445566; border: 1px solid #ffcc00; transform: rotate(-20deg); transform-origin: right bottom; }
+        .pier-south { position: absolute; right: 5px; top: 15px; width: 80px; height: 5px; background: #445566; border: 1px solid #ffcc00; transform: rotate(20deg); transform-origin: right top; }
+        
+        /* Lichten */
+        .light-green { position: absolute; left: 75%; top: 50%; width: 10px; height: 10px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 15px #00ff00; z-index: 4; transform: translate(-10px, -25px); }
+        .light-red { position: absolute; left: 75%; top: 50%; width: 10px; height: 10px; background: #ff3333; border-radius: 50%; box-shadow: 0 0 15px #ff3333; z-index: 4; transform: translate(-10px, 15px); }
+        
+        /* Lichtenlijn / Geleidelicht (Lijn trekt exact naar het midden van de havenmonding) */
+        .leading-line { position: absolute; left: 0; top: 50%; width: 75%; height: 0; border-top: 2px dashed rgba(255, 255, 0, 0.4); z-index: 1; transform: translateY(-50%); }
+        .leading-line-text { position: absolute; left: 2%; top: 46%; font-size: 11px; color: #ffcc00; opacity: 0.7; z-index: 2; }
 
         /* De Schepen (Targets) */
         .vessel {
@@ -69,7 +72,6 @@
             border-left: 2px solid #00ffcc; 
             box-shadow: -5px 0 15px rgba(0, 255, 204, 0.2);
             box-sizing: border-box;
-            overflow-y: auto;
         }
         h2 { margin: 0 0 5px 0; color: #00ffcc; font-size: 15px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffcc; text-transform: uppercase; }
         .ship-entry { padding: 6px 0; border-bottom: 1px dashed rgba(0,255,204,0.15); font-size: 12px; }
@@ -86,19 +88,24 @@
 <body>
 
     <div id="container">
-        <!-- Links: Het fysieke radarscherm met ingebouwde Scheveningen geografie -->
+        <!-- Links: Het fysieke radarscherm met stabiele uitlijning -->
         <div id="radar-area">
             <div class="coastline"></div>
-            <div class="pier-north"></div>
-            <div class="pier-south"></div>
+            <div class="leading-line"></div>
+            <div class="leading-line-text">LICHTENLIJN 090° (INBOUND)</div>
+
+            <!-- Gekoppelde havenmonding-unit -->
+            <div class="harbor-entrance">
+                <div class="pier-north"></div>
+                <div class="pier-south"></div>
+            </div>
+            
             <div class="light-green"></div>
             <div class="light-red"></div>
-            <div class="leading-line"></div>
-            <div class="leading-line-text">LICHTENLIJN 112°</div>
 
             <!-- Targets -->
-            <div id="ship1" class="vessel" data-name="SCH-24" style="left: 15%; top: 35%;" onclick="selectShip(1)"></div>
-            <div id="ship2" class="vessel" data-name="ALTAIR" style="left: 45%; top: 75%;" onclick="selectShip(2)"></div>
+            <div id="ship1" class="vessel" data-name="SCH-24" style="left: 10%; top: 50%;" onclick="selectShip(1)"></div>
+            <div id="ship2" class="vessel" data-name="ALTAIR" style="left: 40%; top: 20%;" onclick="selectShip(2)"></div>
         </div>
 
         <!-- Rechts: Het geavanceerde VTS Informatie- en Besturingspaneel -->
@@ -113,28 +120,28 @@
             <!-- Besturingsknoppen (worden actief bij selectie) -->
             <div id="controls-panel" style="display: none;">
                 <div class="control-group">
-                    <span class="control-label">Nieuwe Koers (0 - 350°):</span>
-                    <input type="number" id="courseInput" class="control-input" min="0" max="359" placeholder="bv. 112">
+                    <span class="control-label">Nieuwe Koers (0 - 359°):</span>
+                    <input type="number" id="courseInput" class="control-input" min="0" max="359">
                     <button class="btn" onclick="updateCourse()">SET</button>
                 </div>
                 <div class="control-group">
                     <span class="control-label">Nieuwe Snelheid (kts):</span>
-                    <input type="number" id="speedInput" class="control-input" min="0" max="30" placeholder="bv. 12">
+                    <input type="number" id="speedInput" class="control-input" min="0" max="30">
                     <button class="btn" onclick="updateSpeed()">SET</button>
                 </div>
             </div>
             
             <hr style="border-color: rgba(0,255,204,0.3); margin: 15px 0;">
             <h2>ALARM SYSTEM</h2>
-            <div id="alarm-box" style="color: #00ff00; font-size: 12px; font-weight: bold;">CPA: VEILIG</div>
+            <div id="alarm-box" style="color: #00ff00; font-size: 12px; font-weight: bold;">CPA STATUS: VEILIG</div>
         </div>
     </div>
 
     <script>
-        // Data van de schepen. dx en dy worden berekend op basis van koers en snelheid.
+        // Data van de schepen.
         let ships = {
-            1: { name: "SCH-24 SCHEVENINGEN", x: 15, y: 35, speedKts: 8, headingDeg: 112, mmsi: "244670000", type: "Visserstrawler" },
-            2: { name: "PILOT LAUNCH ALTAIR", x: 45, y: 75, speedKts: 14, headingDeg: 45, mmsi: "244123999", type: "Loodsboot" }
+            1: { name: "SCH-24 SCHEVENINGEN", x: 10, y: 50, speedKts: 6, headingDeg: 90, mmsi: "244670000", type: "Visserstrawler" },
+            2: { name: "PILOT LAUNCH ALTAIR", x: 40, y: 20, speedKts: 12, headingDeg: 135, mmsi: "244123999", type: "Loodsboot" }
         };
 
         let currentSelected = null;
@@ -151,42 +158,39 @@
                 <div class="ship-entry"><b>TARGET:</b> <span class="highlight">${ship.name}</span></div>
                 <div class="ship-entry"><b>MMSI:</b> ${ship.mmsi}</div>
                 <div class="ship-entry"><b>TYPE:</b> ${ship.type}</div>
-                <div class="ship-entry"><b>ACTUELE KOERS:</b> ${ship.headingDeg}°</div>
-                <div class="ship-entry"><b>ACTUELE SNELHEID:</b> ${ship.speedKts} KNTS</div>
+                <div class="ship-entry"><b>KOERS:</b> ${ship.headingDeg}°</div>
+                <div class="ship-entry"><b>SNELHEID:</b> ${ship.speedKts} KNTS</div>
             `;
             
-            // Toon de invoervakken
             document.getElementById('controls-panel').style.display = 'block';
             document.getElementById('courseInput').value = ship.headingDeg;
             document.getElementById('speedInput').value = ship.speedKts;
         };
 
-        // Pas de koers aan op basis van de input van de operator
         window.updateCourse = function() {
             let val = parseInt(document.getElementById('courseInput').value);
             if (currentSelected && !isNaN(val) && val >= 0 && val < 360) {
                 ships[currentSelected].headingDeg = val;
-                selectShip(currentSelected); // Ververs het infoscherm
+                selectShip(currentSelected);
             }
         };
 
-        // Pas de snelheid aan op basis van de input van de operator
         window.updateSpeed = function() {
             let val = parseFloat(document.getElementById('speedInput').value);
             if (currentSelected && !isNaN(val) && val >= 0) {
                 ships[currentSelected].speedKts = val;
-                selectShip(currentSelected); // Ververs het infoscherm
+                selectShip(currentSelected);
             }
         };
 
-        // De simulatie-engine (Beweegt de schepen realistisch op basis van hun koershoek)
+        // De FIXED simulatie-engine (Beweegt de schepen live op basis van goniometrie)
         setInterval(() => {
             for (let id in ships) {
                 let ship = ships[id];
                 
-                // Wiskunde om koersgraden en knopen om te zetten naar X/Y beweging op het scherm
+                // Omzetten van maritieme graden (0-360) naar wiskundige radialen
                 let radians = (ship.headingDeg - 90) * (Math.PI / 180);
-                let factor = ship.speedKts * 0.004; // Schalingsfactor voor loopsnelheid
+                let factor = ship.speedKts * 0.03; // Stabiele stapgrootte
                 
                 ship.x += Math.cos(radians) * factor;
                 ship.y += Math.sin(radians) * factor;
