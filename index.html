@@ -1,26 +1,30 @@
-<!DOCTYPE html>
+html<!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VTS Radar Simulator - Scheveningen Sector</title>
-    <!-- Leaflet Kaartbestanden -->
+    <!-- Leaflet Engine en FontAwesome Icoontjes -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <link rel="stylesheet" href="https://cloudflare.com" />
     
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
-        body, html { height: 100%; background-color: #020406; color: #00ff66; overflow: hidden; }
+        body, html { height: 100%; background-color: #010204; color: #00ff66; overflow: hidden; }
         .vts-container { display: flex; width: 100vw; height: 100vh; }
         
         /* Radarscherm links */
-        #radar-screen { flex: 3; height: 100%; background-color: #04080f; position: relative; border-right: 2px solid #00ff66; }
-        #radar-overlay-info { position: absolute; top: 15px; left: 60px; z-index: 1000; background: rgba(4, 8, 15, 0.85); padding: 6px 12px; border: 1px solid #00ff66; font-weight: bold; font-size: 0.9rem; pointer-events: none; }
+        #radar-screen { flex: 3; height: 100%; background-color: #010204; position: relative; border-right: 2px solid #00ff66; }
+        #radar-overlay-info { position: absolute; top: 15px; left: 60px; z-index: 1000; background: rgba(1, 2, 4, 0.9); padding: 6px 12px; border: 1px solid #00ff66; font-weight: bold; font-size: 0.9rem; pointer-events: none; }
         
+        /* Werkend VTS Radar-filter voor de kaart */
+        .leaflet-layer { filter: invert(100%) hue-rotate(100deg) brightness(35%) contrast(140%); }
+        .leaflet-container { background: #010204 !important; }
+
         /* Dashboard rechts */
-        .control-panel { flex: 1; background-color: #080d16; display: flex; flex-direction: column; padding: 15px; gap: 12px; overflow-y: auto; border-left: 1px solid #004411; }
+        .control-panel { flex: 1; background-color: #080d16; display: flex; flex-direction: column; padding: 15px; gap: 12px; overflow-y: auto; border-left: 1px solid #004411; color: #00ff66; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00ff66; padding-bottom: 8px; }
-        .panel-header h2 { font-size: 1.2rem; color: #00ff66; font-weight: bold; }
+        .panel-header h2 { font-size: 1.1rem; color: #00ff66; font-weight: bold; }
         #vts-clock { font-weight: bold; background: #04080f; padding: 4px 8px; border: 1px solid #00ff66; border-radius: 4px; }
         
         .tools-box, .spawn-box, .ship-info-box, .vhf-box { background: #04080f; border: 1px solid #004411; padding: 12px; border-radius: 4px; }
@@ -28,23 +32,25 @@
         label { font-size: 0.8rem; display: block; margin-bottom: 4px; }
         
         button { background: #002208; border: 1px solid #00ff66; color: #00ff66; padding: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 0.85rem; margin-top: 5px; }
-        button:hover { background: #00ff66; color: #04080f; }
-        button.active-tool { background: #ffaa00; border-color: #ffaa00; color: #04080f; }
+        button:hover { background: #00ff66; color: #010204; }
+        button.active-tool { background: #ffaa00; border-color: #ffaa00; color: #010204; }
         select { width: 100%; background: #04080f; border: 1px solid #004411; color: #00ff66; padding: 6px; margin-bottom: 5px; }
         
         #measurement-output { font-size: 0.8rem; color: #00ffbb; margin-top: 6px; line-height: 1.4; }
         .ship-data-grid { display: grid; grid-template-columns: 80px 1fr; gap: 4px; font-size: 0.85rem; }
         .placeholder-text { color: #004411; font-style: italic; }
-        .ship-radar-label { background: transparent; border: none; color: #00ff66; font-weight: bold; font-size: 10px; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; white-space: nowrap; }
+        
+        /* Tekstlabels op de radar */
+        .ship-radar-label { background: transparent !important; border: none !important; color: #00ff66 !important; font-weight: bold; font-size: 11px !important; text-shadow: 2px 2px 2px #000, -2px -2px 2px #000; white-space: nowrap; box-shadow: none !important; }
         
         /* Marifoon Log */
-        #vhf-log { height: 120px; overflow-y: auto; background: #020406; border: 1px solid #002208; padding: 6px; font-size: 0.8rem; margin-bottom: 6px; }
+        #vhf-log { height: 120px; overflow-y: auto; background: #010204; border: 1px solid #002208; padding: 6px; font-size: 0.8rem; margin-bottom: 6px; }
         #vhf-log p { margin-bottom: 4px; }
         .system-msg { color: #00ffbb; }
         .vts-msg { color: #ffff00; }
         .ship-msg { color: #ffffff; }
         .vhf-input-container { display: flex; gap: 5px; }
-        #vhf-input { flex: 1; background: #020406; border: 1px solid #00ff66; color: #00ff66; padding: 6px; }
+        #vhf-input { flex: 1; background: #010204; border: 1px solid #00ff66; color: #00ff66; padding: 6px; }
         
         #cpa-warning-box { margin-top: 10px; font-weight: bold; font-size: 0.85rem; }
         .danger-flash { color: #ff3333 !important; animation: flash 1s infinite; }
@@ -59,7 +65,7 @@
             <div id="radar-overlay-info">SECTOR: SCHEVENINGEN TRAFFIC | VHF CH 21</div>
         </div>
 
-        <!-- Dashboard -->
+        <!-- Dashboard Bediening -->
         <div class="control-panel">
             <div class="panel-header">
                 <h2><i class="fa-solid fa-circle-radiation"></i> NNVO VTS RADAR</h2>
@@ -104,21 +110,32 @@
         </div>
     </div>
 
-    <!-- Scripts koppelen -->
+    <!-- Leaflet JavaScript Core Engine -->
     <script src="https://unpkg.com"></script>
     <script>
-        // 1. Initialisatie van de Zeekaart (Gecorrigeerd naar juiste CartoDB link)
+        // 1. Initialisatie van de Zeekaart (Gefocust op kustlijn Scheveningen)
         const map = L.map('radar-screen', { zoomControl: true, minZoom: 11, maxZoom: 17 }).setView([52.115, 4.240], 13);
-        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap © CARTO' }).addTo(map);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+            attribution: '© OpenStreetMap' 
+        }).addTo(map);
 
-        // 2. Havenmonding & Ankergebied intekenen
+        // 2. Geografie: Havenmonding & Ankergebied 4 Scheveningen
         const havenHoofden = [[52.1023, 4.2612], [52.0998, 4.2635]];
-        L.polyline(havenHoofden, {color: '#00ff66', weight: 4, dashArray: '5, 5'}).addTo(map).bindTooltip("Havenmond Scheveningen", {className: 'ship-radar-label'});
+        L.polyline(havenHoofden, {color: '#00ff66', weight: 4, dashArray: '5, 5'}).addTo(map);
+        
+        L.marker([52.101, 4.266], {
+            icon: L.divIcon({ className: 'ship-radar-label', html: 'HAVENMOND' })
+        }).addTo(map);
 
         const ankerGebied4 = [[52.140, 4.160], [52.160, 4.190], [52.145, 4.220], [52.125, 4.190]];
-        L.polygon(ankerGebied4, {color: '#00ffff', weight: 1.5, fillColor: '#00ffff', fillOpacity: 0.03}).addTo(map).bindTooltip("ANKERGEBIED 4", {permanent: true, className: 'ship-radar-label', direction: 'center'});
+        L.polygon(ankerGebied4, {color: '#00ffff', weight: 1.5, fillColor: '#00ffff', fillOpacity: 0.05}).addTo(map);
+        
+        L.marker([52.143, 4.190], {
+            icon: L.divIcon({ className: 'ship-radar-label', html: 'ANKERGEBIED 4' })
+        }).addTo(map);
 
-        // 3. Targets Database
+        // 3. Database met schepen
         let ships = [
             { id: 1, name: "SCH-118 ZEEAREND", lat: 52.105, lon: 4.252, heading: 240, speed: 7.0, type: "Visserij (Trawler)", vectorLine: null, textLabel: null, marker: null },
             { id: 2, name: "PACIFIC ROCK", lat: 52.135, lon: 4.185, heading: 135, speed: 0.0, type: "Bulk Carrier (Voor Anker)", vectorLine: null, textLabel: null, marker: null }
@@ -126,7 +143,7 @@
         let selectedShipId = null;
         let namesPool = ["STORK 4", "EEMS TRADER", "ROTTERDAM STAR", "ZEELAND", "MIRFAK", "TRITON", "SCH-45", "NAVIGATOR"];
 
-        // 4. Teken Targets + 6-minvectoren
+        // 4. Render Engine voor Targets en Vectoren
         function renderShips() {
             ships.forEach(ship => {
                 if (ship.marker) map.removeLayer(ship.marker);
@@ -140,11 +157,11 @@
                 const endLat = ship.lat + Math.sin(rad) * speedInDeg * (vectorMinutes * 60) * 12;
                 const endLon = ship.lon + Math.cos(rad) * speedInDeg * (vectorMinutes * 60) * 12;
 
-                ship.vectorLine = L.polyline([[ship.lat, ship.lon], [endLat, endLon]], {color: '#00ff66', weight: 1.5}).addTo(map);
-                ship.marker = L.circleMarker([ship.lat, ship.lon], { radius: 5, color: '#00ff66', fillColor: '#04080f', fillOpacity: 1, weight: 2 }).addTo(map);
+                ship.vectorLine = L.polyline([[ship.lat, ship.lon], [endLat, endLon]], {color: '#00ff66', weight: 2}).addTo(map);
+                ship.marker = L.circleMarker([ship.lat, ship.lon], { radius: 6, color: '#00ff66', fillColor: '#010204', fillOpacity: 1, weight: 2 }).addTo(map);
                 
-                ship.textLabel = L.marker([ship.lat + 0.0015, ship.lon + 0.002], {
-                    icon: L.divIcon({ className: 'ship-radar-label', html: `${ship.name}<br>${String(Math.round(ship.heading)).padStart(3,'0')}° / ${ship.speed.toFixed(1)}KT` })
+                ship.textLabel = L.marker([ship.lat + 0.0012, ship.lon + 0.0015], {
+                    icon: L.divIcon({ className: 'ship-radar-label', html: `${ship.name}<br>${String(Math.round(ship.heading)).padStart(3,'0')}°/${ship.speed.toFixed(1)}KT` })
                 }).addTo(map);
 
                 ship.marker.on('click', () => selectShip(ship.id));
@@ -155,15 +172,3 @@
             selectedShipId = id;
             const ship = ships.find(s => s.id === id);
             if (!ship) return;
-
-            document.getElementById('target-data').innerHTML = `
-                <div class="ship-data-grid">
-                    <span>TARGET:</span><strong>${ship.name}</strong>
-                    <span>TYPE:</span><span>${ship.type}</span>
-                    <span>COG:</span><span>${Math.round(ship.heading)}° True</span>
-                    <span>SOG:</span><span>${ship.speed.toFixed(1)} KT</span>
-                    <span>POS:</span><span>${ship.lat.toFixed(4)}N / ${ship.lon.toFixed(4)}E</span>
-                </div>
-            `;
-            calculateCPA(ship);
-        }
