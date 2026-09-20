@@ -3,14 +3,15 @@ html<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VTS Simulator - Basis Console</title>
+    <title>VTS Simulator - Sector Rotterdam Maasmond</title>
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: #161b26;
+            --bg-color: #080c14;
+            --panel-bg: #121824;
             --radar-green: #00ff66;
+            --radar-orange: #ff9900;
             --text-color: #e2e8f0;
-            --border-color: #2d3748;
+            --border-color: #232d42;
         }
 
         body {
@@ -37,8 +38,9 @@ html<!DOCTYPE html>
 
         .side-panel {
             display: grid;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: 1.2fr 0.8fr;
             grid-gap: 20px;
+            height: 100%;
         }
 
         .panel-box {
@@ -46,7 +48,14 @@ html<!DOCTYPE html>
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .table-wrapper {
             overflow-y: auto;
+            flex-grow: 1;
         }
 
         h2 {
@@ -58,18 +67,18 @@ html<!DOCTYPE html>
         }
 
         #radarCanvas {
-            background-color: #05070b;
+            background-color: #030508;
             border: 2px solid var(--radar-green);
             border-radius: 50%;
             display: block;
             margin: auto;
-            box-shadow: 0 0 20px rgba(0, 255, 102, 0.2);
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.15);
         }
 
         .ship-list-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .ship-list-table th, .ship-list-table td {
@@ -80,32 +89,38 @@ html<!DOCTYPE html>
 
         .ship-list-table th {
             color: #a0aec0;
+            position: sticky;
+            top: 0;
+            background: var(--panel-bg);
         }
 
         #vhf-log {
-            background: #000;
+            background: #030508;
             border: 1px solid var(--border-color);
             padding: 10px;
-            font-family: monospace;
-            height: 150px;
+            font-family: 'Courier New', Courier, monospace;
+            flex-grow: 1;
             overflow-y: auto;
             color: #38bdf8;
             border-radius: 4px;
+            font-size: 0.85rem;
         }
 
         .controls {
             margin-top: 15px;
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         button {
             background: #1e293b;
             color: white;
             border: 1px solid var(--border-color);
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 0.85rem;
             transition: 0.2s;
         }
 
@@ -113,6 +128,15 @@ html<!DOCTYPE html>
             background: var(--radar-green);
             color: black;
             font-weight: bold;
+        }
+
+        .btn-alert {
+            background: #7f1d1d;
+            border-color: #ef4444;
+        }
+        .btn-alert:hover {
+            background: #ef4444;
+            color: white;
         }
 
         .status-bar {
@@ -128,42 +152,44 @@ html<!DOCTYPE html>
 
     <!-- Linkerpaneel: Radarscherm -->
     <div class="main-panel">
-        <h2>VTS Live Radarscherm (Sector Noord)</h2>
-        <canvas id="radarCanvas" width="500" height="500"></canvas>
+        <h2>Rotterdam Port Control - Sector Maasmond</h2>
+        <canvas id="radarCanvas" width="550" height="550"></canvas>
         <div class="controls">
             <button onclick="changeZoom(1)">Zoom In</button>
             <button onclick="changeZoom(-1)">Zoom Uit</button>
-            <button onclick="triggerAlert()">VHF Noodoproep (Mayday)</button>
+            <button onclick="triggerIncident()" class="btn-alert">Simuleer Incident (Calandkanaal)</button>
         </div>
-        <div class="status-bar">VTS Systeem Status: Operationeel | Sector: Maasmond | Bereik: 12 NM</div>
+        <div class="status-bar">VTS-Systeem: Actief | Regio: Rotterdam Aanloop | Basis: Hook of Holland VTS</div>
     </div>
 
     <!-- Rechterpaneel: Informatie & Communicatie -->
     <div class="side-panel">
         <!-- Schepen Overzicht -->
         <div class="panel-box">
-            <h2>Gedetecteerde Schepen (AIS)</h2>
-            <table class="ship-list-table">
-                <thead>
-                    <tr>
-                        <th>Schip</th>
-                        <th>Koers</th>
-                        <th>Snelheid</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="ship-table-body">
-                    <!-- Dynamisch ingeladen via JS -->
-                </tbody>
-            </table>
+            <h2>Live AIS Verkeer (Rotterdam)</h2>
+            <div class="table-wrapper">
+                <table class="ship-list-table">
+                    <thead>
+                        <tr>
+                            <th>Schip</th>
+                            <th>Bestemming</th>
+                            <th>Krs / Snelheid</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ship-table-body">
+                        <!-- Dynamisch -->
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- VHF Radio Log -->
         <div class="panel-box">
-            <h2>VHF Radioverkeer (Ch 16 / Ch 12)</h2>
+            <h2>VHF Radioverkeer (VHF Ch 11 / Ch 14)</h2>
             <div id="vhf-log"></div>
             <div class="controls" style="margin-top: 10px;">
-                <input type="text" id="vhf-input" placeholder="Type VTS bericht..." style="flex-grow: 1; padding: 6px; background: #0f172a; border: 1px solid var(--border-color); color: white; border-radius: 4px;">
+                <input type="text" id="vhf-input" placeholder="Roep schip op of zend instructie..." style="flex-grow: 1; padding: 7px; background: #0f172a; border: 1px solid var(--border-color); color: white; border-radius: 4px; font-size: 0.85rem;">
                 <button onclick="sendVHFMessage()">Zend</button>
             </div>
         </div>
@@ -174,15 +200,17 @@ html<!DOCTYPE html>
         const ctx = canvas.getContext('2d');
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        let radarRadius = canvas.width / 2 - 10;
+        let radarRadius = canvas.width / 2 - 15;
         let scanAngle = 0;
-        let zoomLevel = 1;
+        let zoomLevel = 1.0;
 
-        // Statische mock data voor schepen in de VTS sector
+        // Rotterdam-specifieke schepen & posities relatief ten opzichte van de Maasmond (0,0)
         let ships = [
-            { name: "Maersk Voyager", x: 120, y: -80, vx: 0.2, vy: 0.1, course: 56, speed: 14.2, status: "Underway" },
-            { name: "Rotterdam Express", x: -60, y: 140, vx: -0.1, vy: -0.15, course: 210, speed: 11.5, status: "Underway" },
-            { name: "Atlantic Orca", x: 40, y: 20, vx: 0, vy: 0, course: 0, speed: 0.0, status: "Anchored" }
+            { id: 0, name: "CMA CGM Antoine", type: "Container", destination: "Maasvlakte II", x: -140, y: -40, vx: 0.18, vy: 0.05, course: 74, speed: 15.1, status: "Inbound" },
+            { id: 1, name: "Stolt Rotterdam", type: "Tanker", destination: "Botlek", x: 40, y: 15, vx: 0.08, vy: -0.02, course: 102, speed: 8.4, status: "Inbound" },
+            { id: 2, name: "Ever Given", type: "Container", destination: "Prinses Amaliahaven", x: -60, y: -15, vx: 0.12, vy: 0.04, course: 72, speed: 11.0, status: "Inbound" },
+            { id: 3, name: "P&O Pioneer", type: "RoRo Ferry", destination: "Europoort", x: 10, y: 55, vx: -0.15, vy: -0.10, course: 236, speed: 16.5, status: "Outbound" },
+            { id: 4, name: "Smit Cheetah", type: "Tugboat", destination: "Maasvlakte Anchorage", x: -100, y: 80, vx: 0, vy: 0, course: 0, speed: 0.0, status: "Standby" }
         ];
 
         function logVHF(sender, text) {
@@ -192,103 +220,59 @@ html<!DOCTYPE html>
             log.scrollTop = log.scrollHeight;
         }
 
-        // Teken het radar grid en de schepen
+        // Teken de schematische kustlijn en vaargeulen van Rotterdam
+        function drawRotterdamMap() {
+            ctx.strokeStyle = 'rgba(0, 255, 102, 0.1)';
+            ctx.fillStyle = 'rgba(0, 255, 102, 0.02)';
+            ctx.lineWidth = 1.5;
+
+            ctx.beginPath();
+            // Noordzee kustlijn (Scheveningen richting Hoek van Holland)
+            ctx.moveTo(centerX + (20 * zoomLevel), centerY - (250 * zoomLevel));
+            ctx.lineTo(centerX + (30 * zoomLevel), centerY - (30 * zoomLevel));
+            
+            // Nieuwe Waterweg (Richting stad/Botlek)
+            ctx.lineTo(centerX + (250 * zoomLevel), centerY - (10 * zoomLevel));
+            ctx.lineTo(centerX + (250 * zoomLevel), centerY + (20 * zoomLevel));
+            
+            // Splitsing naar Europoort / Calandkanaal
+            ctx.lineTo(centerX + (50 * zoomLevel), centerY + (30 * zoomLevel));
+            ctx.lineTo(centerX + (180 * zoomLevel), centerY + (60 * zoomLevel));
+            ctx.lineTo(centerX + (150 * zoomLevel), centerY + (90 * zoomLevel));
+            
+            // Maasvlakte I & II contouren
+            ctx.lineTo(centerX + (10 * zoomLevel), centerY + (60 * zoomLevel));
+            ctx.lineTo(centerX - (30 * zoomLevel), centerY + (110 * zoomLevel));
+            ctx.lineTo(centerX - (100 * zoomLevel), centerY + (60 * zoomLevel));
+            ctx.lineTo(centerX - (40 * zoomLevel), centerY - (10 * zoomLevel));
+            
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill();
+
+            // Eurogeul / Maasgeul (Inlooplijn vanaf zee)
+            ctx.strokeStyle = 'rgba(0, 255, 102, 0.07)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(centerX - (250 * zoomLevel), centerY - (80 * zoomLevel));
+            ctx.lineTo(centerX - (40 * zoomLevel), centerY - (10 * zoomLevel));
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+        }
+
         function drawRadar() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Achtergrond cirkels (Afstandsringen)
-            ctx.strokeStyle = 'rgba(0, 255, 102, 0.2)';
+            // Teken geografische kaart
+            drawRotterdamMap();
+
+            // Afstandsringen (Nautische Mijlen indicatie)
+            ctx.strokeStyle = 'rgba(0, 255, 102, 0.15)';
             ctx.lineWidth = 1;
-            for (let r = 50; r <= radarRadius; r += 50) {
+            for (let r = 60; r <= radarRadius; r += 60) {
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
                 ctx.stroke();
             }
 
-            // Kruislijnen (Kardinale assen)
-            ctx.beginPath();
-            ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
-            ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
-            ctx.stroke();
-
-            // Radarnld sweep effect
-            ctx.strokeStyle = 'rgba(0, 255, 102, 0.4)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + radarRadius * Math.cos(scanAngle), centerY + radarRadius * Math.sin(scanAngle));
-            ctx.stroke();
-
-            // Update en teken schepen
-            ships.forEach(ship => {
-                // Update posities op basis van snelheid vector
-                ship.x += ship.vx;
-                ship.y += ship.vy;
-
-                // Converteer relatieve posities naar canvascoördinaten inclusief zoom
-                let screenX = centerX + (ship.x * zoomLevel);
-                let screenY = centerY + (ship.y * zoomLevel);
-
-                // Controleer of schip binnen het radarscherm valt
-                let dist = Math.sqrt(Math.pow(screenX - centerX, 2) + Math.pow(screenY - centerY, 2));
-                if (dist < radarRadius) {
-                    // Teken Schip Blip
-                    ctx.fillStyle = varColorForStatus(ship.status);
-                    ctx.beginPath();
-                    ctx.arc(screenX, screenY, 5, 0, 2 * Math.PI);
-                    ctx.fill();
-
-                    // Richtingslijn (Koers)
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.moveTo(screenX, screenY);
-                    ctx.lineTo(screenX + (ship.vx * 50), screenY + (ship.vy * 50));
-                    ctx.stroke();
-
-                    // Naamlabel
-                    ctx.fillStyle = '#a0aec0';
-                    ctx.font = '10px monospace';
-                    ctx.fillText(ship.name, screenX + 8, screenY - 5);
-                }
-            });
-
-            // Update sweep hoek
-            scanAngle += 0.01;
-            requestAnimationFrame(drawRadar);
-        }
-
-        function varColorForStatus(status) {
-            if(status === "Anchored") return '#e2e8f0';
-            if(status === "Emergency") return '#ef4444';
-            return '#00ff66';
-        }
-
-        // Update de AIS tabel aan de rechterkant
-        function updateShipTable() {
-            const tbody = document.getElementById('ship-table-body');
-            tbody.innerHTML = '';
-            ships.forEach(ship => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="font-weight:bold;">${ship.name}</td>
-                    <td>${ship.course}°</td>
-                    <td>${ship.speed} kn</td>
-                    <td style="color:${varColorForStatus(ship.status)}">${ship.status}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function changeZoom(dir) {
-            if (dir > 0 && zoomLevel < 2) zoomLevel += 0.2;
-            if (dir < 0 && zoomLevel > 0.4) zoomLevel -= 0.2;
-        }
-
-        function triggerAlert() {
-            ships[0].status = "Emergency";
-            ships[0].vx = 0; ships[0].vy = 0; shipSpeed = 0;
-            logVHF(ships[0].name, "MAYDAY, MAYDAY, MAYDAY. We hebben een machinekamerbrand opgelopen. Positie nabij boei Alpha.");
-            updateShipTable();
-        }
-
-Wees voorzichtig met code.function sendVHFMessage() {const input = document.getElementById('vhf-input');if(input.value.trim() !== "") {logVHF("VTS Operator", input.value);input.value = "";}}// Start simulatie loopssetInterval(updateShipTable, 1000);drawRadar();// Initiële begroetingen in VHFsetTimeout(() => logVHF("Systeem", "VTS Simulator opgestart. Kanaal 16 stand-by."), 500);setTimeout(() => logVHF("Maersk Voyager", "VTS Maasmond, dit is Maersk Voyager. Binnenvaren sector gepland over 10 minuten."), 3000);
+            // Radarnaald sweep
